@@ -10,16 +10,16 @@ pub struct Solution<Fluid> {
     /// Cycle mass flow rate.
     pub m_dot: MassRate,
 
-    /// Compressor shaft power (input).
+    /// Compressor power.
     pub w_dot_comp: Power,
 
-    /// Turbine shaft power (output).
+    /// Turbine power.
     pub w_dot_turb: Power,
 
-    /// Precooler heat rejection rate (heat removed from the working fluid).
+    /// Precooler heat rejection.
     pub q_dot_pc: Power,
 
-    /// Primary heat exchanger heat input rate (heat added to the working fluid).
+    /// Primary heat exchanger heat addition.
     pub q_dot_phx: Power,
 
     /// Thermal efficiency (`η = W_net / Q_in`).

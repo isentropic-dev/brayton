@@ -27,7 +27,7 @@ pub struct TurboConfig {
 #[derive(Debug, Clone, Copy)]
 pub struct HxConfig {
     /// Recuperator parameters.
-    pub recup: RecuperatorConfig,
+    pub recuperator: RecuperatorConfig,
 
     /// Precooler pressure drop.
     pub precooler_dp: PressureDrop,
