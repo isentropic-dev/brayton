@@ -5,7 +5,6 @@ use twine_components::{
     thermal::hx::discretized,
     turbomachinery::{compressor::CompressionError, turbine::ExpansionError},
 };
-use twine_core::constraint::ConstraintError;
 use twine_thermo::units::SpecificEnthalpy;
 
 #[derive(Debug, Error)]
@@ -21,9 +20,6 @@ pub enum Error<Fluid> {
 
     #[error("insufficient turbine work: w_net = {w_net:?} (expected > 0)")]
     InsufficientTurbineWork { w_net: SpecificEnthalpy },
-
-    #[error("constraint: {0}")]
-    Constraint(#[from] ConstraintError),
 
     #[error("thermo: {0}")]
     Thermo(Box<dyn StdError + Send + Sync>),
