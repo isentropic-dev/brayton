@@ -52,7 +52,7 @@ pub struct RecuperatorConfig {
 /// Model for pressure drop across a component.
 #[derive(Debug, Clone, Copy)]
 pub enum PressureDrop {
-    /// No pressure drop across the component.
+    /// No pressure drop.
     None,
 
     /// Fixed pressure drop `Δp`.

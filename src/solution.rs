@@ -3,7 +3,7 @@ use uom::si::f64::{MassRate, Power, Ratio};
 
 /// Model solution at the design point for a closed Brayton cycle.
 #[derive(Debug, Clone)]
-pub struct Solution<Fluid: Clone> {
+pub struct Solution<Fluid> {
     /// Thermodynamic states around the cycle.
     pub states: CycleStates<Fluid>,
 
@@ -36,7 +36,7 @@ pub struct Solution<Fluid: Clone> {
 /// 5. Turbine outlet (to recuperator hot side)
 /// 6. Recuperator hot-side outlet (to precooler)
 #[derive(Debug, Clone)]
-pub struct CycleStates<Fluid: Clone> {
+pub struct CycleStates<Fluid> {
     /// Compressor inlet (precooler outlet).
     pub s1: State<Fluid>,
 
@@ -54,21 +54,4 @@ pub struct CycleStates<Fluid: Clone> {
 
     /// Recuperator hot-side outlet (to precooler).
     pub s6: State<Fluid>,
-}
-
-impl<Fluid: Clone> CycleStates<Fluid> {
-    /// Returns the cycle states ordered from state 1 through state 6.
-    ///
-    /// Useful for plotting thermodynamic paths or generic post-processing
-    /// that operates on the cycle as an ordered sequence of states.
-    pub fn as_array(&self) -> [State<Fluid>; 6] {
-        [
-            self.s1.clone(),
-            self.s2.clone(),
-            self.s3.clone(),
-            self.s4.clone(),
-            self.s5.clone(),
-            self.s6.clone(),
-        ]
-    }
 }
