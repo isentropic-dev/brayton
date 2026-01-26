@@ -1,5 +1,6 @@
 use twine_core::constraint::{
-    Constrained, ConstraintResult, NonNegative, UnitIntervalLowerOpen, UnitIntervalUpperOpen,
+    Constrained, ConstraintResult, NonNegative, UnitBounds, UnitIntervalLowerOpen,
+    UnitIntervalUpperOpen,
 };
 use uom::si::f64::{Pressure, Ratio, ThermalConductance};
 
@@ -40,7 +41,7 @@ pub struct HxConfig {
 #[derive(Debug, Clone, Copy)]
 pub struct RecuperatorConfig {
     /// Overall thermal conductance (`UA`) of the recuperator.
-    pub ua: ThermalConductance,
+    pub ua: Constrained<ThermalConductance, NonNegative>,
 
     /// Cold-side (compressor-side) pressure drop.
     pub dp_cold: PressureDrop,
@@ -79,5 +80,75 @@ impl PressureDrop {
     /// Returns an error if `f` is not in the interval `0 ≤ f < 1`.
     pub fn fraction(f: Ratio) -> ConstraintResult<Self> {
         Ok(Self::Fraction(Constrained::new(f)?))
+    }
+
+    /// Calculate outlet pressure given inlet pressure.
+    ///
+    /// For forward flow direction: `p_out = p_in - Δp`
+    #[must_use]
+    pub fn outlet_pressure(&self, p_inlet: Pressure) -> Pressure {
+        match self {
+            Self::None => p_inlet,
+            Self::Absolute(dp) => p_inlet - *dp.as_ref(),
+            Self::Fraction(f) => p_inlet * (Ratio::one() - *f.as_ref()),
+        }
+    }
+
+    /// Calculate inlet pressure given outlet pressure.
+    ///
+    /// For backward flow direction: `p_in = p_out + Δp`
+    ///
+    /// For fractional drops: `Δp = f · p_in`, so solving gives `p_in = p_out / (1 - f)`
+    #[must_use]
+    pub fn inlet_pressure(&self, p_outlet: Pressure) -> Pressure {
+        match self {
+            Self::None => p_outlet,
+            Self::Absolute(dp) => p_outlet + *dp.as_ref(),
+            Self::Fraction(f) => p_outlet / (Ratio::one() - *f.as_ref()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use uom::si::{
+        f64::{Pressure, Ratio},
+        pressure::kilopascal,
+        ratio::ratio,
+    };
+
+    #[test]
+    fn pressure_drop_absolute_round_trip() {
+        let p_inlet = Pressure::new::<kilopascal>(80.0);
+        let dp = PressureDrop::absolute(Pressure::new::<kilopascal>(2.5)).unwrap();
+
+        let p_outlet = dp.outlet_pressure(p_inlet);
+        let p_back = dp.inlet_pressure(p_outlet);
+
+        assert_eq!(p_back, p_inlet);
+    }
+
+    #[test]
+    fn pressure_drop_fraction_round_trip() {
+        let p_inlet = Pressure::new::<kilopascal>(20.0);
+        let dp = PressureDrop::fraction(Ratio::new::<ratio>(0.02)).unwrap();
+
+        let p_outlet = dp.outlet_pressure(p_inlet);
+        let p_back = dp.inlet_pressure(p_outlet);
+
+        assert_eq!(p_back, p_inlet);
+    }
+
+    #[test]
+    fn pressure_drop_fraction_outlet_math() {
+        let p_inlet = Pressure::new::<kilopascal>(50.0);
+        let dp = PressureDrop::fraction(Ratio::new::<ratio>(0.1)).unwrap();
+
+        let expected = Pressure::new::<kilopascal>(45.0);
+        let actual = dp.outlet_pressure(p_inlet);
+
+        assert_eq!(actual, expected);
     }
 }
