@@ -1,5 +1,6 @@
+use twine_components::thermal::hx::discretized::GivenUaConfig;
 use twine_core::constraint::{
-    Constrained, ConstraintResult, NonNegative, UnitBounds, UnitIntervalLowerOpen,
+    Constrained, ConstraintResult, NonNegative, UnitBounds, UnitInterval, UnitIntervalLowerOpen,
     UnitIntervalUpperOpen,
 };
 use uom::si::{
@@ -50,14 +51,33 @@ impl IsentropicEfficiency {
         Ok(Self(Constrained::new(r)?))
     }
 
-    /// Gets the efficiency as a `Ratio`.
+    /// Returns the efficiency as a `Ratio`.
     #[must_use]
     pub fn as_ratio(&self) -> Ratio {
         *self.0.as_ref()
     }
+
+    /// Returns the efficiency as `Constrained<Ratio, UnitIntervalLowerOpen>`.
+    ///
+    /// Use this for compressor isentropic efficiency.
+    #[must_use]
+    pub fn as_lower_open(&self) -> Constrained<Ratio, UnitIntervalLowerOpen> {
+        self.0
+    }
+
+    /// Returns the efficiency as `Constrained<Ratio, UnitInterval>`.
+    ///
+    /// Use this for turbine isentropic efficiency.
+    /// The widening from (0, 1] to [0, 1] is safe because (0, 1] ⊆ [0, 1].
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn as_unit_interval(&self) -> Constrained<Ratio, UnitInterval> {
+        Constrained::new(self.0.into_inner())
+            .expect("UnitIntervalLowerOpen is within UnitInterval bounds")
+    }
 }
 
-/// Thermal–hydraulic parameters for heat exchangers in the cycle.
+/// Configuration for the heat exchanger models.
 #[derive(Debug, Clone, Copy)]
 pub struct HxConfig {
     /// Recuperator parameters.
@@ -70,7 +90,7 @@ pub struct HxConfig {
     pub primary_dp: PressureDrop,
 }
 
-/// Thermal–hydraulic parameters for the recuperator model.
+/// Configuration for the recuperator model.
 #[derive(Debug, Clone, Copy)]
 pub struct RecuperatorConfig {
     /// Overall thermal conductance (`UA`) of the recuperator.
@@ -81,6 +101,9 @@ pub struct RecuperatorConfig {
 
     /// Hot-side (turbine-side) pressure drop.
     pub dp_hot: PressureDrop,
+
+    /// Convergence settings for the recuperator solver.
+    pub convergence: GivenUaConfig,
 }
 
 /// Model for pressure drop across a component.
@@ -97,7 +120,7 @@ pub enum PressureDrop {
 }
 
 impl PressureDrop {
-    /// Construct a fixed pressure drop `Δp`.
+    /// Constructs a fixed pressure drop `Δp`.
     ///
     /// # Errors
     ///
@@ -106,7 +129,7 @@ impl PressureDrop {
         Ok(Self::Absolute(Constrained::new(dp)?))
     }
 
-    /// Construct a fractional pressure drop `f` referenced to inlet pressure.
+    /// Constructs a fractional pressure drop `f` referenced to inlet pressure.
     ///
     /// # Errors
     ///
@@ -115,7 +138,7 @@ impl PressureDrop {
         Ok(Self::Fraction(Constrained::new(f)?))
     }
 
-    /// Calculate outlet pressure given inlet pressure.
+    /// Calculates outlet pressure given inlet pressure.
     ///
     /// For forward flow direction: `p_out = p_in - Δp`
     #[must_use]
@@ -127,7 +150,7 @@ impl PressureDrop {
         }
     }
 
-    /// Calculate inlet pressure given outlet pressure.
+    /// Calculates inlet pressure given outlet pressure.
     ///
     /// For backward flow direction: `p_in = p_out + Δp`
     ///
