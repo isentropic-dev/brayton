@@ -2,7 +2,10 @@ use twine_core::constraint::{
     Constrained, ConstraintResult, NonNegative, UnitBounds, UnitIntervalLowerOpen,
     UnitIntervalUpperOpen,
 };
-use uom::si::f64::{Pressure, Ratio, ThermalConductance};
+use uom::si::{
+    f64::{Pressure, Ratio, ThermalConductance},
+    ratio::ratio,
+};
 
 /// Fixed parameters defining the cycle hardware and loss models.
 #[derive(Debug, Clone)]
@@ -18,10 +21,40 @@ pub struct Config {
 #[derive(Debug, Clone, Copy)]
 pub struct TurboConfig {
     /// Compressor isentropic efficiency.
-    pub eta_comp: Constrained<Ratio, UnitIntervalLowerOpen>,
+    pub eta_comp: IsentropicEfficiency,
 
     /// Turbine isentropic efficiency.
-    pub eta_turb: Constrained<Ratio, UnitIntervalLowerOpen>,
+    pub eta_turb: IsentropicEfficiency,
+}
+
+/// Isentropic efficiency for turbomachinery components.
+#[derive(Debug, Clone, Copy)]
+pub struct IsentropicEfficiency(Constrained<Ratio, UnitIntervalLowerOpen>);
+
+impl IsentropicEfficiency {
+    /// Constructs from a dimensionless ratio value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `value` is not in the interval (0, 1].
+    pub fn new(value: f64) -> ConstraintResult<Self> {
+        Ok(Self(Constrained::new(Ratio::new::<ratio>(value))?))
+    }
+
+    /// Constructs from a `Ratio` (e.g., using percent: `Ratio::new::<percent>(85.0)`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `r` is not in (0, 1] when expressed as a dimensionless ratio.
+    pub fn from_ratio(r: Ratio) -> ConstraintResult<Self> {
+        Ok(Self(Constrained::new(r)?))
+    }
+
+    /// Gets the efficiency as a `Ratio`.
+    #[must_use]
+    pub fn as_ratio(&self) -> Ratio {
+        *self.0.as_ref()
+    }
 }
 
 /// Thermal–hydraulic parameters for heat exchangers in the cycle.
@@ -113,11 +146,31 @@ impl PressureDrop {
 mod tests {
     use super::*;
 
+    use approx::assert_relative_eq;
     use uom::si::{
         f64::{Pressure, Ratio},
         pressure::kilopascal,
-        ratio::ratio,
+        ratio::{percent, ratio},
     };
+
+    #[test]
+    fn isentropic_efficiency_new_and_as_ratio() {
+        let eta = IsentropicEfficiency::new(0.85).unwrap();
+        assert_relative_eq!(eta.as_ratio().value, 0.85);
+    }
+
+    #[test]
+    fn isentropic_efficiency_from_ratio_percent() {
+        let eta = IsentropicEfficiency::from_ratio(Ratio::new::<percent>(85.0)).unwrap();
+        assert_relative_eq!(eta.as_ratio().value, 0.85);
+    }
+
+    #[test]
+    fn isentropic_efficiency_validates_bounds() {
+        assert!(IsentropicEfficiency::new(0.0).is_err());
+        assert!(IsentropicEfficiency::new(1.5).is_err());
+        assert!(IsentropicEfficiency::new(0.85).is_ok());
+    }
 
     #[test]
     fn pressure_drop_absolute_round_trip() {

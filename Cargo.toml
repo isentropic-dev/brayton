@@ -9,3 +9,4 @@ twine-core = "0.4.2"
 twine-thermo = { version = "0.4.2", features = ["coolprop"] }
 uom = "0.37.0"
 thiserror = "2.0.16"
+approx = "0.5.1"
