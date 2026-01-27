@@ -32,7 +32,7 @@ pub struct TurboConfig {
 pub struct IsentropicEfficiency(Constrained<Ratio, UnitIntervalLowerOpen>);
 
 impl IsentropicEfficiency {
-    /// Construct from a dimensionless ratio value.
+    /// Constructs from a dimensionless ratio value.
     ///
     /// # Errors
     ///
@@ -41,7 +41,7 @@ impl IsentropicEfficiency {
         Ok(Self(Constrained::new(Ratio::new::<ratio>(value))?))
     }
 
-    /// Construct from a `Ratio` (e.g., using percent: `Ratio::new::<percent>(85.0)`).
+    /// Constructs from a `Ratio` (e.g., using percent: `Ratio::new::<percent>(85.0)`).
     ///
     /// # Errors
     ///
@@ -50,7 +50,7 @@ impl IsentropicEfficiency {
         Ok(Self(Constrained::new(r)?))
     }
 
-    /// Get the efficiency as a `Ratio`.
+    /// Gets the efficiency as a `Ratio`.
     #[must_use]
     pub fn as_ratio(&self) -> Ratio {
         *self.0.as_ref()
