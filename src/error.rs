@@ -45,7 +45,6 @@ pub enum Error<Fluid> {
 
 impl<Fluid> Error<Fluid> {
     /// Creates a thermo model failure error with context.
-    #[allow(dead_code)]
     pub(crate) fn thermo_failed(
         context: impl Into<String>,
         err: impl StdError + Send + Sync + 'static,
