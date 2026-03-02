@@ -12,6 +12,8 @@
  * and keep the same create/update interface.
  */
 
+const CHART_WIDTH = 360;
+const CHART_HEIGHT = 280;
 const PADDING = { top: 40, right: 30, bottom: 50, left: 65 };
 const POINT_RADIUS = 4;
 const COLORS = {
@@ -32,17 +34,6 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
   const ctx = canvas.getContext('2d');
   let currentPoints = null;
 
-  function resize() {
-    const rect = container.getBoundingClientRect();
-    const w = Math.floor(rect.width) || 400;
-    const h = 300;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (currentPoints) draw(currentPoints, w, h);
-  }
 
   function niceRange(min, max) {
     if (min === max) {
@@ -182,18 +173,13 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
 
   function update(points) {
     currentPoints = points;
-    const rect = container.getBoundingClientRect();
-    const w = Math.floor(rect.width) || 400;
-    const h = 300;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+    canvas.style.width = CHART_WIDTH + 'px';
+    canvas.style.height = CHART_HEIGHT + 'px';
+    canvas.width = CHART_WIDTH * dpr;
+    canvas.height = CHART_HEIGHT * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(points, w, h);
+    draw(points, CHART_WIDTH, CHART_HEIGHT);
   }
-
-  window.addEventListener('resize', resize);
 
   return { update };
 }
