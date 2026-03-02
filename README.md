@@ -33,12 +33,10 @@ This is active work — expect daily changes over the next few days.
 # Run tests
 cargo test
 
-# Build WASM
+# Build and serve the dashboard locally
 wasm-pack build --target web --features wasm
-
-# Serve the dashboard locally
-python3 -m http.server 8080 --directory web
-# Open http://localhost:8080
+python3 -m http.server 8080
+# Open http://localhost:8080/web/
 
 # Build Python package
 python -m venv .venv && source .venv/bin/activate
