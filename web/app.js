@@ -119,7 +119,7 @@ function renderCharts(states) {
 
   if (!tsChart) {
     tsChart = createCycleChart(document.getElementById('chart-ts'), {
-      title: 'T–s Diagram',
+      title: 'T–s',
       xLabel: 's (kJ/kg·K)',
       yLabel: 'T (°C)',
     });
@@ -128,7 +128,7 @@ function renderCharts(states) {
 
   if (!hsChart) {
     hsChart = createCycleChart(document.getElementById('chart-hs'), {
-      title: 'h–s Diagram',
+      title: 'h–s',
       xLabel: 's (kJ/kg·K)',
       yLabel: 'h (kJ/kg)',
     });
@@ -137,7 +137,7 @@ function renderCharts(states) {
 
   if (!pvChart) {
     pvChart = createCycleChart(document.getElementById('chart-pv'), {
-      title: 'P–v Diagram',
+      title: 'P–v',
       xLabel: 'v (m³/kg)',
       yLabel: 'P (kPa)',
     });
@@ -146,7 +146,7 @@ function renderCharts(states) {
 
   if (!phChart) {
     phChart = createCycleChart(document.getElementById('chart-ph'), {
-      title: 'P–h Diagram',
+      title: 'P–h',
       xLabel: 'h (kJ/kg)',
       yLabel: 'P (kPa)',
     });
