@@ -31,7 +31,7 @@ header h1 {
 
 main {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 300px minmax(0, 640px);
   gap: 1px;
   background: #ddd;
   min-height: calc(100vh - 80px);
@@ -113,15 +113,16 @@ h3 {
 }
 
 table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
   font-size: 0.85rem;
 }
 
 th, td {
   text-align: left;
-  padding: 0.35rem 0.75rem;
+  padding: 0.3rem 0.5rem;
   border-bottom: 1px solid #eee;
+  white-space: nowrap;
 }
 
 th {
@@ -164,12 +165,13 @@ th {
 
 /* Charts */
 
-.chart-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.chart-stack {
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
 }
 
 .chart-container {
+  max-width: 480px;
   min-height: 300px;
 }

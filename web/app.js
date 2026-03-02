@@ -27,6 +27,7 @@ const INPUT_IDS = [
 ];
 
 let tsChart = null;
+let hsChart = null;
 let phChart = null;
 
 // Fields where the UI shows percent but the facade expects a 0–1 fraction.
@@ -107,6 +108,7 @@ function toChartPoints(states, xKey, yKey) {
 
 function renderCharts(states) {
   const tsPoints = toChartPoints(states, 'entropy_kj_per_kg_k', 'temperature_c');
+  const hsPoints = toChartPoints(states, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
   const phPoints = toChartPoints(states, 'enthalpy_kj_per_kg', 'pressure_kpa');
 
   if (!tsChart) {
@@ -117,6 +119,15 @@ function renderCharts(states) {
     });
   }
   tsChart.update(tsPoints);
+
+  if (!hsChart) {
+    hsChart = createCycleChart(document.getElementById('chart-hs'), {
+      title: 'h–s Diagram (Mollier)',
+      xLabel: 's (kJ/kg·K)',
+      yLabel: 'h (kJ/kg)',
+    });
+  }
+  hsChart.update(hsPoints);
 
   if (!phChart) {
     phChart = createCycleChart(document.getElementById('chart-ph'), {
