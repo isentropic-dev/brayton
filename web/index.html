@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>Brayton Cycle — Design Point</h1>
-    <p class="subtitle">Simple recuperated sCO₂ cycle · PerfectGas model · runs in your browser via WASM</p>
+    <p class="subtitle">Simple recuperated sCO₂ cycle · runs in your browser via WASM · ideal gas for now, real gas properties coming soon</p>
   </header>
 
   <main>
@@ -19,16 +19,16 @@
       <fieldset>
         <legend>Operating Point</legend>
         <label>Compressor inlet temperature (°C)
-          <input type="number" id="compressor_inlet_temp_c" value="50" step="1">
+          <input type="number" id="compressor_inlet_temp_c" value="32" step="1">
         </label>
         <label>Turbine inlet temperature (°C)
-          <input type="number" id="turbine_inlet_temp_c" value="500" step="1">
+          <input type="number" id="turbine_inlet_temp_c" value="550" step="1">
         </label>
         <label>Compressor inlet pressure (kPa)
-          <input type="number" id="compressor_inlet_pressure_kpa" value="100" step="10">
+          <input type="number" id="compressor_inlet_pressure_kpa" value="8000" step="10">
         </label>
         <label>Compressor outlet pressure (kPa)
-          <input type="number" id="compressor_outlet_pressure_kpa" value="300" step="10">
+          <input type="number" id="compressor_outlet_pressure_kpa" value="20000" step="10">
         </label>
         <label>Net power (kW)
           <input type="number" id="net_power_kw" value="10000" step="100">
