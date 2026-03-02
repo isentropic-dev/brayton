@@ -8,4 +8,6 @@ twine-models = "0.1"
 twine-core = "0.5"
 uom = "0.36"
 thiserror = "2.0.16"
+
+[dev-dependencies]
 approx = "0.5.1"
