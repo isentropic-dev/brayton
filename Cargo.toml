@@ -8,6 +8,7 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = []
+python = ["dep:pyo3"]
 wasm = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
 
 [dependencies]
@@ -15,6 +16,7 @@ twine-models = "0.1"
 twine-core = "0.5"
 uom = "0.36"
 thiserror = "2.0.16"
+pyo3 = { version = "0.28", features = ["extension-module"], optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde-wasm-bindgen = { version = "0.6", optional = true }

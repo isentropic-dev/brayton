@@ -3,6 +3,8 @@ mod cycle;
 mod error;
 pub mod facade;
 mod operating_point;
+#[cfg(feature = "python")]
+mod python;
 mod solution;
 
 #[cfg(feature = "wasm")]
