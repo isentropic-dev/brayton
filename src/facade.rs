@@ -26,6 +26,7 @@ use crate::{
 /// All temperatures in °C, pressures in kPa, power in kW,
 /// thermal conductance in kW/K, efficiencies and pressure drop
 /// fractions as dimensionless ratios (0–1).
+#[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
 pub struct DesignPointInput {
     // Operating point
     /// Compressor inlet temperature in degrees Celsius.
@@ -75,6 +76,7 @@ pub struct DesignPointInput {
 
 /// Thermodynamic performance output for a design-point calculation.
 #[derive(Debug)]
+#[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
 pub struct DesignPointOutput {
     /// Cycle mass flow rate in kilograms per second.
     pub mass_flow_kg_per_s: f64,
@@ -111,6 +113,7 @@ pub struct DesignPointOutput {
 
 /// Thermodynamic state at a single cycle point.
 #[derive(Debug)]
+#[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
 pub struct StatePoint {
     /// Temperature in degrees Celsius.
     pub temperature_c: f64,

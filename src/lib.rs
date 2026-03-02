@@ -5,6 +5,9 @@ pub mod facade;
 mod operating_point;
 mod solution;
 
+#[cfg(feature = "wasm")]
+mod wasm;
+
 pub use config::{
     Config, HxConfig, InvalidPressureDrop, IsentropicEfficiency, PressureDrop, RecuperatorConfig,
     TurboConfig,

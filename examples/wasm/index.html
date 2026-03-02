@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><title>Brayton WASM Test</title></head>
+<body>
+  <h1>Brayton Cycle — WASM Smoke Test</h1>
+  <pre id="output">Running...</pre>
+  <script type="module">
+    import init, { design_point } from '../../pkg/brayton.js';
+
+    async function run() {
+      await init();
+      const result = design_point({
+        compressor_inlet_temp_c: 50.0,
+        turbine_inlet_temp_c: 500.0,
+        compressor_inlet_pressure_kpa: 100.0,
+        compressor_outlet_pressure_kpa: 300.0,
+        net_power_kw: 10000.0,
+        compressor_efficiency: 0.89,
+        turbine_efficiency: 0.93,
+        recuperator_ua_kw_per_k: 2000.0,
+        recuperator_segments: 10,
+        recuperator_dp_cold_fraction: 0.02,
+        recuperator_dp_hot_fraction: 0.02,
+        precooler_dp_fraction: 0.01,
+        primary_hx_dp_fraction: 0.01,
+      });
+      document.getElementById('output').textContent =
+        JSON.stringify(result, null, 2);
+    }
+
+    run().catch(e => {
+      document.getElementById('output').textContent = 'Error: ' + e;
+    });
+  </script>
+</body>
+</html>
