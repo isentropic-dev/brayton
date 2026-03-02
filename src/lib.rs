@@ -5,7 +5,8 @@ mod operating_point;
 mod solution;
 
 pub use config::{
-    Config, HxConfig, IsentropicEfficiency, PressureDrop, RecuperatorConfig, TurboConfig,
+    Config, HxConfig, InvalidPressureDrop, IsentropicEfficiency, PressureDrop, RecuperatorConfig,
+    TurboConfig,
 };
 pub use cycle::design_point;
 pub use error::Error;

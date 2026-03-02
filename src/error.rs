@@ -1,11 +1,13 @@
 use std::error::Error as StdError;
 
 use thiserror::Error;
-use twine_components::{
-    thermal::hx::discretized,
-    turbomachinery::{compressor::CompressionError, turbine::ExpansionError},
+use twine_models::{
+    models::thermal::hx::discretized::RecuperatorError,
+    support::{
+        turbomachinery::{compressor::CompressionError, turbine::ExpansionError},
+        units::SpecificEnthalpy,
+    },
 };
-use twine_thermo::units::SpecificEnthalpy;
 
 #[derive(Debug, Error)]
 pub enum Error<Fluid> {
@@ -16,7 +18,10 @@ pub enum Error<Fluid> {
     Turbine(#[from] ExpansionError<Fluid>),
 
     #[error("recuperator: {0}")]
-    Recuperator(#[from] discretized::GivenUaError),
+    Recuperator(#[from] RecuperatorError),
+
+    #[error("net power must be positive")]
+    NonPositiveNetPower,
 
     #[error("insufficient turbine work: w_net = {w_net:?} (expected > 0)")]
     InsufficientTurbineWork { w_net: SpecificEnthalpy },

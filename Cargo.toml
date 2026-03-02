@@ -4,9 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-twine-components = "0.4.2"
-twine-core = "0.4.2"
-twine-thermo = { version = "0.4.2", features = ["coolprop"] }
-uom = "0.37.0"
+twine-models = "0.1"
+twine-core = "0.5"
+uom = "0.36"
 thiserror = "2.0.16"
 approx = "0.5.1"

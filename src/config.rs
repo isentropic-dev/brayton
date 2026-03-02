@@ -1,12 +1,10 @@
-use twine_components::thermal::hx::discretized::GivenUaConfig;
-use twine_core::constraint::{
-    Constrained, ConstraintResult, NonNegative, UnitBounds, UnitInterval, UnitIntervalLowerOpen,
-    UnitIntervalUpperOpen,
-};
+use thiserror::Error;
 use uom::si::{
     f64::{Pressure, Ratio, ThermalConductance},
     ratio::ratio,
 };
+
+pub use twine_models::support::turbomachinery::IsentropicEfficiency;
 
 /// Fixed parameters defining the cycle hardware and loss models.
 #[derive(Debug, Clone)]
@@ -28,55 +26,6 @@ pub struct TurboConfig {
     pub eta_turb: IsentropicEfficiency,
 }
 
-/// Isentropic efficiency for turbomachinery components.
-#[derive(Debug, Clone, Copy)]
-pub struct IsentropicEfficiency(Constrained<Ratio, UnitIntervalLowerOpen>);
-
-impl IsentropicEfficiency {
-    /// Constructs from a dimensionless ratio value.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if `value` is not in the interval (0, 1].
-    pub fn new(value: f64) -> ConstraintResult<Self> {
-        Ok(Self(Constrained::new(Ratio::new::<ratio>(value))?))
-    }
-
-    /// Constructs from a `Ratio` (e.g., using percent: `Ratio::new::<percent>(85.0)`).
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if `r` is not in (0, 1] when expressed as a dimensionless ratio.
-    pub fn from_ratio(r: Ratio) -> ConstraintResult<Self> {
-        Ok(Self(Constrained::new(r)?))
-    }
-
-    /// Returns the efficiency as a `Ratio`.
-    #[must_use]
-    pub fn as_ratio(&self) -> Ratio {
-        *self.0.as_ref()
-    }
-
-    /// Returns the efficiency as `Constrained<Ratio, UnitIntervalLowerOpen>`.
-    ///
-    /// Use this for compressor isentropic efficiency.
-    #[must_use]
-    pub fn as_lower_open(&self) -> Constrained<Ratio, UnitIntervalLowerOpen> {
-        self.0
-    }
-
-    /// Returns the efficiency as `Constrained<Ratio, UnitInterval>`.
-    ///
-    /// Use this for turbine isentropic efficiency.
-    /// The widening from (0, 1] to [0, 1] is safe because (0, 1] ⊆ [0, 1].
-    #[must_use]
-    #[allow(clippy::missing_panics_doc)]
-    pub fn as_unit_interval(&self) -> Constrained<Ratio, UnitInterval> {
-        Constrained::new(self.0.into_inner())
-            .expect("UnitIntervalLowerOpen is within UnitInterval bounds")
-    }
-}
-
 /// Configuration for the heat exchanger models.
 #[derive(Debug, Clone, Copy)]
 pub struct HxConfig {
@@ -94,16 +43,30 @@ pub struct HxConfig {
 #[derive(Debug, Clone, Copy)]
 pub struct RecuperatorConfig {
     /// Overall thermal conductance (`UA`) of the recuperator.
-    pub ua: Constrained<ThermalConductance, NonNegative>,
+    pub ua: ThermalConductance,
+
+    /// Number of discretization segments.
+    ///
+    /// Supported values: 1, 5, 10, 20, 50.
+    pub segments: usize,
 
     /// Cold-side (compressor-side) pressure drop.
     pub dp_cold: PressureDrop,
 
     /// Hot-side (turbine-side) pressure drop.
     pub dp_hot: PressureDrop,
+}
 
-    /// Convergence settings for the recuperator solver.
-    pub convergence: GivenUaConfig,
+/// Validation error for [`PressureDrop`] construction.
+#[derive(Debug, Clone, Copy, PartialEq, Error)]
+pub enum InvalidPressureDrop {
+    /// Absolute pressure drop must be non-negative.
+    #[error("absolute pressure drop must be non-negative")]
+    Negative,
+
+    /// Fractional pressure drop must satisfy 0 ≤ f < 1.
+    #[error("fractional pressure drop must satisfy 0 ≤ f < 1")]
+    OutOfRange,
 }
 
 /// Model for pressure drop across a component.
@@ -113,10 +76,10 @@ pub enum PressureDrop {
     None,
 
     /// Fixed pressure drop `Δp`.
-    Absolute(Constrained<Pressure, NonNegative>),
+    Absolute(Pressure),
 
     /// Fractional pressure drop `f` referenced to inlet pressure (`Δp = f · p_in`).
-    Fraction(Constrained<Ratio, UnitIntervalUpperOpen>),
+    Fraction(Ratio),
 }
 
 impl PressureDrop {
@@ -125,8 +88,11 @@ impl PressureDrop {
     /// # Errors
     ///
     /// Returns an error if `dp` is negative.
-    pub fn absolute(dp: Pressure) -> ConstraintResult<Self> {
-        Ok(Self::Absolute(Constrained::new(dp)?))
+    pub fn absolute(dp: Pressure) -> Result<Self, InvalidPressureDrop> {
+        if dp.value < 0.0 {
+            return Err(InvalidPressureDrop::Negative);
+        }
+        Ok(Self::Absolute(dp))
     }
 
     /// Constructs a fractional pressure drop `f` referenced to inlet pressure.
@@ -134,8 +100,12 @@ impl PressureDrop {
     /// # Errors
     ///
     /// Returns an error if `f` is not in the interval `0 ≤ f < 1`.
-    pub fn fraction(f: Ratio) -> ConstraintResult<Self> {
-        Ok(Self::Fraction(Constrained::new(f)?))
+    pub fn fraction(f: Ratio) -> Result<Self, InvalidPressureDrop> {
+        let v = f.get::<ratio>();
+        if !(0.0..1.0).contains(&v) {
+            return Err(InvalidPressureDrop::OutOfRange);
+        }
+        Ok(Self::Fraction(f))
     }
 
     /// Calculates outlet pressure given inlet pressure.
@@ -145,8 +115,8 @@ impl PressureDrop {
     pub fn outlet_pressure(&self, p_inlet: Pressure) -> Pressure {
         match self {
             Self::None => p_inlet,
-            Self::Absolute(dp) => p_inlet - *dp.as_ref(),
-            Self::Fraction(f) => p_inlet * (Ratio::one() - *f.as_ref()),
+            Self::Absolute(dp) => p_inlet - *dp,
+            Self::Fraction(f) => p_inlet * (Ratio::new::<ratio>(1.0) - *f),
         }
     }
 
@@ -159,8 +129,8 @@ impl PressureDrop {
     pub fn inlet_pressure(&self, p_outlet: Pressure) -> Pressure {
         match self {
             Self::None => p_outlet,
-            Self::Absolute(dp) => p_outlet + *dp.as_ref(),
-            Self::Fraction(f) => p_outlet / (Ratio::one() - *f.as_ref()),
+            Self::Absolute(dp) => p_outlet + *dp,
+            Self::Fraction(f) => p_outlet / (Ratio::new::<ratio>(1.0) - *f),
         }
     }
 }
@@ -176,16 +146,18 @@ mod tests {
         ratio::{percent, ratio},
     };
 
+    use twine_models::support::turbomachinery::IsentropicEfficiency;
+
     #[test]
     fn isentropic_efficiency_new_and_as_ratio() {
         let eta = IsentropicEfficiency::new(0.85).unwrap();
-        assert_relative_eq!(eta.as_ratio().value, 0.85);
+        assert_relative_eq!(eta.ratio().get::<ratio>(), 0.85);
     }
 
     #[test]
     fn isentropic_efficiency_from_ratio_percent() {
         let eta = IsentropicEfficiency::from_ratio(Ratio::new::<percent>(85.0)).unwrap();
-        assert_relative_eq!(eta.as_ratio().value, 0.85);
+        assert_relative_eq!(eta.ratio().get::<ratio>(), 0.85);
     }
 
     #[test]

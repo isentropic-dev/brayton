@@ -1,4 +1,4 @@
-use twine_thermo::State;
+use twine_models::support::thermo::State;
 use uom::si::f64::{MassRate, Power, Ratio};
 
 /// Model solution at the design point for a closed Brayton cycle.
