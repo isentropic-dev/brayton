@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-twine-models = { path = "/Users/john/repos/isentropic-dev/twine-models" }
+twine-models = { git = "https://github.com/isentropic-dev/twine-models.git", rev = "a6df7e3" }
 twine-core = "0.5"
 uom = "0.36"
 thiserror = "2.0.16"

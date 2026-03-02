@@ -279,6 +279,7 @@ checksum = "ff0c319e9838813ab378aea2a73615e9c060dbe6bc0f35688006545185be2968"
 [[package]]
 name = "twine-models"
 version = "0.1.0"
+source = "git+https://github.com/isentropic-dev/twine-models.git?rev=a6df7e3#a6df7e3c562a0c948d2c9e28fea5af1fd3ec586f"
 dependencies = [
  "num-traits",
  "rfluids",
