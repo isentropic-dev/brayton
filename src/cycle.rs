@@ -1,13 +1,13 @@
-use twine_components::{
-    thermal::hx::{
-        arrangement::CounterFlow,
-        discretized::{DiscretizedHx, Inlets, Known, MassFlows, PressureDrops},
+use twine_core::Model;
+use twine_models::{
+    models::thermal::hx::discretized::{
+        Inlets, MassFlows, PressureDrops, Recuperator, RecuperatorConfig, RecuperatorInput,
     },
-    turbomachinery::{compressor, turbine},
-};
-use twine_thermo::{
-    capability::{HasEnthalpy, HasEntropy, HasPressure, StateFrom, ThermoModel},
-    units::{SpecificEnthalpy, SpecificEntropy},
+    support::{
+        thermo::capability::{HasEnthalpy, HasEntropy, HasPressure, StateFrom, ThermoModel},
+        turbomachinery::{compressor, turbine},
+        units::{SpecificEnthalpy, SpecificEntropy},
+    },
 };
 use uom::{
     ConstZero,
@@ -26,15 +26,16 @@ use super::{Config, CycleStates, Error, OperatingPoint, Solution};
 ///
 /// Returns an error on infeasible operating points, thermodynamic model
 /// failures, or component model failures.
-pub fn design_point<Fluid, Model, const N: usize>(
+pub fn design_point<Fluid, Thermo>(
     operating_point: OperatingPoint,
     config: &Config,
     fluid: Fluid,
-    thermo: &Model,
+    thermo: Thermo,
 ) -> Result<Solution<Fluid>, Error<Fluid>>
 where
     Fluid: Clone,
-    Model: ThermoModel<Fluid = Fluid>
+    Thermo: Clone
+        + ThermoModel<Fluid = Fluid>
         + HasPressure
         + HasEnthalpy
         + HasEntropy
@@ -42,6 +43,11 @@ where
         + StateFrom<(Fluid, Pressure, SpecificEnthalpy)>
         + StateFrom<(Fluid, Pressure, SpecificEntropy)>,
 {
+    // Validate operating point.
+    if operating_point.net_power.value <= 0.0 {
+        return Err(Error::NonPositiveNetPower);
+    }
+
     // Calculate pressures at all state points.
     // Work forward from the compressor inlet through the hot side,
     // and backward from the precooler outlet through the cold side.
@@ -72,37 +78,36 @@ where
     let compressor::CompressionResult {
         outlet: s2,
         work: comp_work,
-    } = compressor::isentropic(&s1, p2, config.turbo.eta_comp.as_lower_open(), thermo)?;
+    } = compressor::isentropic(&s1, p2, config.turbo.eta_comp, &thermo)?;
 
     // Go through turbine to define state 5.
     let turbine::ExpansionResult {
         outlet: s5,
         work: turb_work,
-    } = turbine::isentropic(&s4, p5, config.turbo.eta_turb.as_unit_interval(), thermo)?;
+    } = turbine::isentropic(&s4, p5, config.turbo.eta_turb, &thermo)?;
 
     // Calculate net power and required mass flow rate.
     let w_net = turb_work.quantity() - comp_work.quantity();
     if w_net <= SpecificEnthalpy::ZERO {
         return Err(Error::InsufficientTurbineWork { w_net });
     }
-    let m_dot = operating_point.net_power.into_inner() / w_net;
+    let m_dot = operating_point.net_power / w_net;
 
     // Solve recuperator with given UA to define states 3 and 6.
-    let recup = DiscretizedHx::<CounterFlow, N>::given_ua_same(
-        &Known {
-            inlets: Inlets {
-                top: s2.clone(),
-                bottom: s5.clone(),
-            },
-            m_dot: MassFlows::new_unchecked(m_dot, m_dot),
-            dp: PressureDrops::new_unchecked(p5 - p6, p2 - p3),
+    let recuperator =
+        Recuperator::new(thermo.clone(), config.hx.recuperator.segments, RecuperatorConfig::default())
+            .map_err(Error::Recuperator)?;
+    let recup_result = recuperator.call(&RecuperatorInput {
+        inlets: Inlets {
+            top: s2.clone(),
+            bottom: s5.clone(),
         },
-        config.hx.recuperator.ua,
-        config.hx.recuperator.convergence,
-        thermo,
-    )?;
-    let s3 = recup.top[N - 1].clone();
-    let s6 = recup.bottom[0].clone();
+        mass_flows: MassFlows::new_unchecked(m_dot, m_dot),
+        pressure_drops: PressureDrops::new_unchecked(p5 - p6, p2 - p3),
+        ua: config.hx.recuperator.ua,
+    })?;
+    let s3 = recup_result.top_outlet;
+    let s6 = recup_result.bottom_outlet;
 
     // Heat rejection from precooler energy balance: q = h6 - h1.
     let h6 = thermo
@@ -114,12 +119,12 @@ where
     let q_pc = h6 - h1;
 
     // Heat addition from PHX energy balance: q = h4 - h3.
-    let h3 = thermo
-        .enthalpy(&s3)
-        .map_err(|e| Error::thermo_failed("enthalpy(phx inlet)", e))?;
     let h4 = thermo
         .enthalpy(&s4)
         .map_err(|e| Error::thermo_failed("enthalpy(phx outlet)", e))?;
+    let h3 = thermo
+        .enthalpy(&s3)
+        .map_err(|e| Error::thermo_failed("enthalpy(phx inlet)", e))?;
     let q_phx = h4 - h3;
 
     // Thermal efficiency: net work output / heat input.

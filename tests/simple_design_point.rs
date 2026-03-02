@@ -1,8 +1,6 @@
 use brayton::*;
 
-use twine_components::thermal::hx::discretized::GivenUaConfig;
-use twine_core::constraint::Constrained;
-use twine_thermo::{fluid::CarbonDioxide, model::PerfectGas};
+use twine_models::support::thermo::{fluid::CarbonDioxide, model::PerfectGas};
 use uom::si::{
     f64::{Power, Pressure, Ratio, ThermalConductance, ThermodynamicTemperature},
     power::megawatt,
@@ -21,11 +19,10 @@ fn baseline_config() -> Config {
         },
         hx: HxConfig {
             recuperator: RecuperatorConfig {
-                ua: Constrained::new(ThermalConductance::new::<kilowatt_per_kelvin>(2000.0))
-                    .unwrap(),
+                ua: ThermalConductance::new::<kilowatt_per_kelvin>(2000.0),
+                segments: 10,
                 dp_cold: PressureDrop::fraction(Ratio::new::<ratio>(0.02)).unwrap(),
                 dp_hot: PressureDrop::fraction(Ratio::new::<ratio>(0.02)).unwrap(),
-                convergence: GivenUaConfig::default(),
             },
             precooler_dp: PressureDrop::fraction(Ratio::new::<ratio>(0.01)).unwrap(),
             primary_dp: PressureDrop::fraction(Ratio::new::<ratio>(0.01)).unwrap(),
@@ -40,7 +37,7 @@ fn baseline_operating_point() -> OperatingPoint {
         t_turb_in: ThermodynamicTemperature::new::<degree_celsius>(500.0),
         p_comp_in: Pressure::new::<kilopascal>(100.0),
         p_comp_out: Pressure::new::<kilopascal>(300.0),
-        net_power: Constrained::new(Power::new::<megawatt>(10.0)).unwrap(),
+        net_power: Power::new::<megawatt>(10.0),
     }
 }
 
@@ -49,14 +46,14 @@ fn smoke_test_perfect_gas_co2() {
     let op = baseline_operating_point();
     let config = baseline_config();
     let fluid = CarbonDioxide;
-    let thermo = PerfectGas::new().unwrap();
+    let thermo = PerfectGas::<CarbonDioxide>::new().unwrap();
 
-    let result = design_point::<_, _, 10>(op, &config, fluid, &thermo);
+    let result = design_point(op, &config, fluid, thermo);
 
     assert!(result.is_ok());
     let solution = result.unwrap();
 
-    // Verify basic physical constraints
+    // Verify basic physical constraints.
     assert!(solution.m_dot.value > 0.0);
     assert!(solution.w_dot_comp.value > 0.0);
     assert!(solution.w_dot_turb.value > solution.w_dot_comp.value);
@@ -68,16 +65,16 @@ fn smoke_test_perfect_gas_co2() {
 
 #[test]
 fn design_point_insufficient_pressure_rise() {
-    // Low compression ratio
+    // Low compression ratio.
     let op = OperatingPoint {
         p_comp_out: Pressure::new::<kilopascal>(105.0),
         ..baseline_operating_point()
     };
 
     let config = baseline_config();
-    let thermo = PerfectGas::new().unwrap();
+    let thermo = PerfectGas::<CarbonDioxide>::new().unwrap();
 
-    let result = design_point::<_, _, 10>(op, &config, CarbonDioxide, &thermo);
+    let result = design_point(op, &config, CarbonDioxide, thermo);
 
     assert!(result.is_err());
     assert!(matches!(
@@ -88,16 +85,16 @@ fn design_point_insufficient_pressure_rise() {
 
 #[test]
 fn design_point_insufficient_turbine_work() {
-    // Turbine inlet temperature too low relative to compressor inlet
+    // Turbine inlet temperature too low relative to compressor inlet.
     let op = OperatingPoint {
         t_turb_in: ThermodynamicTemperature::new::<degree_celsius>(250.0),
         ..baseline_operating_point()
     };
 
     let config = baseline_config();
-    let thermo = PerfectGas::new().unwrap();
+    let thermo = PerfectGas::<CarbonDioxide>::new().unwrap();
 
-    let result = design_point::<_, _, 10>(op, &config, CarbonDioxide, &thermo);
+    let result = design_point(op, &config, CarbonDioxide, thermo);
 
     assert!(result.is_err());
     assert!(matches!(

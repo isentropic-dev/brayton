@@ -1,4 +1,3 @@
-use twine_core::constraint::{Constrained, StrictlyPositive};
 use uom::si::f64::{Power, Pressure, ThermodynamicTemperature};
 
 /// Design-point operating conditions and targets for the simple Brayton cycle.
@@ -17,5 +16,7 @@ pub struct OperatingPoint {
     pub p_comp_out: Pressure,
 
     /// Net cycle power output (turbine power minus compressor power).
-    pub net_power: Constrained<Power, StrictlyPositive>,
+    ///
+    /// Must be strictly positive.
+    pub net_power: Power,
 }
