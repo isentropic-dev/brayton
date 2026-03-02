@@ -3,11 +3,21 @@ name = "brayton"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+wasm = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
+
 [dependencies]
 twine-models = "0.1"
 twine-core = "0.5"
 uom = "0.36"
 thiserror = "2.0.16"
+wasm-bindgen = { version = "0.2", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde-wasm-bindgen = { version = "0.6", optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
