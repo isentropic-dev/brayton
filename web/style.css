@@ -8,7 +8,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   color: #1a1a1a;
-  background: #f5f5f5;
+  background: #fff;
   line-height: 1.5;
 }
 
@@ -31,7 +31,7 @@ header h1 {
 
 main {
   display: grid;
-  grid-template-columns: 300px minmax(0, 640px);
+  grid-template-columns: 300px 1fr;
   gap: 1px;
   background: #ddd;
   min-height: calc(100vh - 80px);
@@ -40,6 +40,10 @@ main {
 .inputs, .results {
   background: #fff;
   padding: 1.5rem;
+}
+
+.results > * {
+  max-width: 720px;
 }
 
 .inputs h2, .results h2 {
@@ -113,9 +117,12 @@ h3 {
 }
 
 table {
-  width: auto;
   border-collapse: collapse;
   font-size: 0.85rem;
+}
+
+#state-table {
+  width: 100%;
 }
 
 th, td {
@@ -129,6 +136,10 @@ th {
   font-weight: 600;
   color: #444;
   background: #fafafa;
+}
+
+#scalar-table {
+  width: 50%;
 }
 
 #scalar-table td:nth-child(2) {
@@ -165,13 +176,12 @@ th {
 
 /* Charts */
 
-.chart-stack {
-  display: flex;
-  flex-direction: column;
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
 }
 
 .chart-container {
-  max-width: 480px;
   min-height: 300px;
 }
