@@ -30,12 +30,11 @@ pub fn design_point<Fluid, Thermo>(
     operating_point: OperatingPoint,
     config: &Config,
     fluid: Fluid,
-    thermo: Thermo,
+    thermo: &Thermo,
 ) -> Result<Solution<Fluid>, Error<Fluid>>
 where
     Fluid: Clone,
-    Thermo: Clone
-        + ThermoModel<Fluid = Fluid>
+    Thermo: ThermoModel<Fluid = Fluid>
         + HasPressure
         + HasEnthalpy
         + HasEntropy
@@ -78,13 +77,13 @@ where
     let compressor::CompressionResult {
         outlet: s2,
         work: comp_work,
-    } = compressor::isentropic(&s1, p2, config.turbo.eta_comp, &thermo)?;
+    } = compressor::isentropic(&s1, p2, config.turbo.eta_comp, thermo)?;
 
     // Go through turbine to define state 5.
     let turbine::ExpansionResult {
         outlet: s5,
         work: turb_work,
-    } = turbine::isentropic(&s4, p5, config.turbo.eta_turb, &thermo)?;
+    } = turbine::isentropic(&s4, p5, config.turbo.eta_turb, thermo)?;
 
     // Calculate net power and required mass flow rate.
     let w_net = turb_work.quantity() - comp_work.quantity();
@@ -95,7 +94,7 @@ where
 
     // Solve recuperator with given UA to define states 3 and 6.
     let recuperator =
-        Recuperator::new(thermo.clone(), config.hx.recuperator.segments, RecuperatorConfig::default())
+        Recuperator::new(thermo, config.hx.recuperator.segments, RecuperatorConfig::default())
             .map_err(Error::Recuperator)?;
     let recup_result = recuperator.call(&RecuperatorInput {
         inlets: Inlets {

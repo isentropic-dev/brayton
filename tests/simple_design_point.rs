@@ -48,7 +48,7 @@ fn smoke_test_perfect_gas_co2() {
     let fluid = CarbonDioxide;
     let thermo = PerfectGas::<CarbonDioxide>::new().unwrap();
 
-    let result = design_point(op, &config, fluid, thermo);
+    let result = design_point(op, &config, fluid, &thermo);
 
     assert!(result.is_ok());
     let solution = result.unwrap();
@@ -74,7 +74,7 @@ fn design_point_insufficient_pressure_rise() {
     let config = baseline_config();
     let thermo = PerfectGas::<CarbonDioxide>::new().unwrap();
 
-    let result = design_point(op, &config, CarbonDioxide, thermo);
+    let result = design_point(op, &config, CarbonDioxide, &thermo);
 
     assert!(result.is_err());
     assert!(matches!(
@@ -94,7 +94,7 @@ fn design_point_insufficient_turbine_work() {
     let config = baseline_config();
     let thermo = PerfectGas::<CarbonDioxide>::new().unwrap();
 
-    let result = design_point(op, &config, CarbonDioxide, thermo);
+    let result = design_point(op, &config, CarbonDioxide, &thermo);
 
     assert!(result.is_err());
     assert!(matches!(
