@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brayton Cycle Design Point</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Brayton Cycle — Design Point</h1>
+    <p class="subtitle">Simple recuperated sCO₂ cycle · PerfectGas model · runs in your browser via WASM</p>
+  </header>
+
+  <main>
+    <section class="inputs">
+      <h2>Inputs</h2>
+
+      <fieldset>
+        <legend>Operating Point</legend>
+        <label>Compressor inlet temperature (°C)
+          <input type="number" id="compressor_inlet_temp_c" value="50" step="1">
+        </label>
+        <label>Turbine inlet temperature (°C)
+          <input type="number" id="turbine_inlet_temp_c" value="500" step="1">
+        </label>
+        <label>Compressor inlet pressure (kPa)
+          <input type="number" id="compressor_inlet_pressure_kpa" value="100" step="10">
+        </label>
+        <label>Compressor outlet pressure (kPa)
+          <input type="number" id="compressor_outlet_pressure_kpa" value="300" step="10">
+        </label>
+        <label>Net power (kW)
+          <input type="number" id="net_power_kw" value="10000" step="100">
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Turbomachinery</legend>
+        <label>Compressor efficiency (%)
+          <input type="number" id="compressor_efficiency_pct" value="89" step="1" min="1" max="100">
+        </label>
+        <label>Turbine efficiency (%)
+          <input type="number" id="turbine_efficiency_pct" value="93" step="1" min="1" max="100">
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Recuperator</legend>
+        <label>UA (kW/K)
+          <input type="number" id="recuperator_ua_kw_per_k" value="2000" step="100">
+        </label>
+        <label>Segments
+          <select id="recuperator_segments">
+            <option value="1">1</option>
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+        <label>Cold-side ΔP (%)
+          <input type="number" id="recuperator_dp_cold_pct" value="2" step="0.5" min="0" max="50">
+        </label>
+        <label>Hot-side ΔP (%)
+          <input type="number" id="recuperator_dp_hot_pct" value="2" step="0.5" min="0" max="50">
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Pressure Drops</legend>
+        <label>Precooler ΔP (%)
+          <input type="number" id="precooler_dp_pct" value="1" step="0.5" min="0" max="50">
+        </label>
+        <label>Primary HX ΔP (%)
+          <input type="number" id="primary_hx_dp_pct" value="1" step="0.5" min="0" max="50">
+        </label>
+      </fieldset>
+    </section>
+
+    <section class="results">
+      <h2>Results</h2>
+
+      <div id="error" class="error" hidden></div>
+
+      <div id="results-content">
+        <div class="scalars">
+          <h3>Performance</h3>
+          <table id="scalar-table">
+            <tbody>
+              <tr><td>Mass flow rate</td><td id="r-mass-flow">—</td><td>kg/s</td></tr>
+              <tr><td>Compressor power</td><td id="r-comp-power">—</td><td>kW</td></tr>
+              <tr><td>Turbine power</td><td id="r-turb-power">—</td><td>kW</td></tr>
+              <tr><td>Net power</td><td id="r-net-power">—</td><td>kW</td></tr>
+              <tr><td>Heat input</td><td id="r-heat-in">—</td><td>kW</td></tr>
+              <tr><td>Heat rejection</td><td id="r-heat-rej">—</td><td>kW</td></tr>
+              <tr><td>Thermal efficiency</td><td id="r-eta">—</td><td>%</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="states">
+          <h3>State Points</h3>
+          <table id="state-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Location</th>
+                <th>T (°C)</th>
+                <th>P (kPa)</th>
+                <th>ρ (kg/m³)</th>
+                <th>h (kJ/kg)</th>
+                <th>s (kJ/kg·K)</th>
+              </tr>
+            </thead>
+            <tbody id="state-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="charts">
+          <h3>Cycle Diagrams</h3>
+          <div class="chart-row">
+            <div class="chart-container">
+              <div id="chart-ts"></div>
+            </div>
+            <div class="chart-container">
+              <div id="chart-ph"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
