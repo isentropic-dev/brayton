@@ -93,9 +93,12 @@ where
     let m_dot = operating_point.net_power / w_net;
 
     // Solve recuperator with given UA to define states 3 and 6.
-    let recuperator =
-        Recuperator::new(thermo, config.hx.recuperator.segments, RecuperatorConfig::default())
-            .map_err(Error::Recuperator)?;
+    let recuperator = Recuperator::new(
+        thermo,
+        config.hx.recuperator.segments,
+        RecuperatorConfig::default(),
+    )
+    .map_err(Error::Recuperator)?;
     let recup_result = recuperator.call(&RecuperatorInput {
         inlets: Inlets {
             top: s2.clone(),

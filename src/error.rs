@@ -4,10 +4,7 @@ use thiserror::Error;
 use twine_models::{
     models::thermal::hx::discretized::RecuperatorError,
     support::{
-        turbomachinery::{
-            compressor::CompressionError,
-            turbine::ExpansionError,
-        },
+        turbomachinery::{compressor::CompressionError, turbine::ExpansionError},
         units::SpecificEnthalpy,
     },
 };
