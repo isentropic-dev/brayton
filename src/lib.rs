@@ -2,6 +2,7 @@ mod config;
 mod cycle;
 mod error;
 pub mod facade;
+mod fluids;
 mod operating_point;
 mod solution;
 

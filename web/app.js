@@ -54,6 +54,8 @@ const FIELD_MAP = {
 
 function readInputs() {
   const obj = {};
+  obj.model = document.getElementById('model').value;
+  obj.fluid = document.getElementById('fluid').value;
   for (const id of INPUT_IDS) {
     const el = document.getElementById(id);
     const val = id === 'recuperator_segments'
@@ -191,6 +193,40 @@ function onInputChange() {
   debounceTimer = setTimeout(calculate, 300);
 }
 
+const COOLPROP_FLUIDS = [
+  { value: 'CarbonDioxide', label: 'Carbon Dioxide' },
+  { value: 'Nitrogen', label: 'Nitrogen' },
+  { value: 'Helium', label: 'Helium' },
+  { value: 'Butane', label: 'Butane' },
+];
+
+const PERFECT_GAS_FLUIDS = [
+  { value: 'CarbonDioxide', label: 'Carbon Dioxide' },
+];
+
+function onModelChange() {
+  const fluidSelect = document.getElementById('fluid');
+  const fluids = document.getElementById('model').value === 'CoolProp'
+    ? COOLPROP_FLUIDS
+    : PERFECT_GAS_FLUIDS;
+
+  const prev = fluidSelect.value;
+  fluidSelect.innerHTML = '';
+  for (const f of fluids) {
+    const opt = document.createElement('option');
+    opt.value = f.value;
+    opt.textContent = f.label;
+    fluidSelect.appendChild(opt);
+  }
+
+  // Keep the previous selection if it's still available, otherwise default.
+  if (fluids.some(f => f.value === prev)) {
+    fluidSelect.value = prev;
+  }
+
+  onInputChange();
+}
+
 async function main() {
   await init();
 
@@ -198,9 +234,11 @@ async function main() {
     const el = document.getElementById(id);
     el.addEventListener('input', onInputChange);
   }
+  document.getElementById('model').addEventListener('change', onModelChange);
+  document.getElementById('fluid').addEventListener('change', onInputChange);
 
-  // Initial calculation with defaults.
-  calculate();
+  // Populate fluid dropdown for the initial model selection, then calculate.
+  onModelChange();
 }
 
 main().catch(e => {
