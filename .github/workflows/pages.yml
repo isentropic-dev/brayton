@@ -25,24 +25,21 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32-unknown-emscripten
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
 
       - name: Build WASM
-        run: wasm-pack build --target web --features wasm
+        run: cargo build --target wasm32-unknown-emscripten --features wasm --release
 
       - name: Assemble site
         run: |
-          mkdir -p _site/pkg
+          mkdir -p _site
           cp web/* _site/
-          cp pkg/brayton.js pkg/brayton_bg.wasm _site/pkg/
-
-      - name: Fix import path
-        run: sed -i 's|\.\./pkg/|./pkg/|g' _site/app.js
+          cp target/wasm32-unknown-emscripten/release/brayton.wasm _site/
 
       - uses: actions/upload-pages-artifact@v3
 

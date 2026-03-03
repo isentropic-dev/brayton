@@ -1,4 +1,4 @@
-import init, { design_point } from '../pkg/brayton.js';
+import { init, designPoint } from './brayton.js';
 import { createCycleChart } from './cycle-chart.js';
 
 const STATE_LABELS = [
@@ -174,7 +174,7 @@ function calculate() {
   }
 
   try {
-    const result = design_point(input);
+    const result = designPoint(input);
     clearError();
     renderScalars(result);
     renderStates(result.states);

@@ -1,0 +1,7 @@
+[target.wasm32-unknown-emscripten]
+runner = "node"
+rustflags = [
+    "-Clink-arg=-sEXPORTED_FUNCTIONS=['_design_point','_free_result']",
+    "-Clink-arg=-sALLOW_MEMORY_GROWTH=1",
+    "-Clink-arg=--no-entry",
+]
