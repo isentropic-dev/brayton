@@ -305,6 +305,42 @@ mod tests {
         }
     }
 
+    /// Pressures must decrease monotonically along each flow path:
+    /// high side (P2 > P3 > P4) and low side (P5 > P6 > P1).
+    #[test]
+    fn pressures_decrease_along_flow_path() {
+        let out = design_point(&baseline_input()).unwrap();
+        let [s1, s2, s3, s4, s5, s6] = &out.states;
+
+        // High-pressure side: compressor outlet → recuperator cold → PHX → turbine inlet.
+        assert!(
+            s2.pressure_kpa > s3.pressure_kpa,
+            "P2 ({}) must exceed P3 ({})",
+            s2.pressure_kpa,
+            s3.pressure_kpa,
+        );
+        assert!(
+            s3.pressure_kpa > s4.pressure_kpa,
+            "P3 ({}) must exceed P4 ({})",
+            s3.pressure_kpa,
+            s4.pressure_kpa,
+        );
+
+        // Low-pressure side: turbine outlet → recuperator hot → precooler → compressor inlet.
+        assert!(
+            s5.pressure_kpa > s6.pressure_kpa,
+            "P5 ({}) must exceed P6 ({})",
+            s5.pressure_kpa,
+            s6.pressure_kpa,
+        );
+        assert!(
+            s6.pressure_kpa > s1.pressure_kpa,
+            "P6 ({}) must exceed P1 ({})",
+            s6.pressure_kpa,
+            s1.pressure_kpa,
+        );
+    }
+
     #[test]
     fn invalid_compressor_efficiency_returns_error() {
         let input = DesignPointInput {

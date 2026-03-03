@@ -105,7 +105,8 @@ where
             bottom: s5.clone(),
         },
         mass_flows: MassFlows::new_unchecked(m_dot, m_dot),
-        pressure_drops: PressureDrops::new_unchecked(p5 - p6, p2 - p3),
+        // top = cold side, bottom = hot side
+        pressure_drops: PressureDrops::new_unchecked(p2 - p3, p5 - p6),
         ua: config.hx.recuperator.ua,
     })?;
     let s3 = recup_result.top_outlet;
