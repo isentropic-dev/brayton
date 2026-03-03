@@ -13,9 +13,9 @@ const STATE_LABELS = [
 const INPUT_IDS = [
   'compressor_inlet_temp_c',
   'turbine_inlet_temp_c',
-  'compressor_inlet_pressure_kpa',
-  'compressor_outlet_pressure_kpa',
-  'net_power_kw',
+  'compressor_inlet_pressure_mpa',
+  'compressor_outlet_pressure_mpa',
+  'net_power_mw',
   'compressor_efficiency_pct',
   'turbine_efficiency_pct',
   'recuperator_ua_kw_per_k',
@@ -72,12 +72,12 @@ function fmt(v, decimals = 2) {
 }
 
 function renderScalars(r) {
-  document.getElementById('r-mass-flow').textContent = fmt(r.mass_flow_kg_per_s, 2);
-  document.getElementById('r-comp-power').textContent = fmt(r.compressor_power_kw, 1);
-  document.getElementById('r-turb-power').textContent = fmt(r.turbine_power_kw, 1);
-  document.getElementById('r-net-power').textContent = fmt(r.net_power_kw, 1);
-  document.getElementById('r-heat-in').textContent = fmt(r.heat_input_kw, 1);
-  document.getElementById('r-heat-rej').textContent = fmt(r.heat_rejection_kw, 1);
+  document.getElementById('r-mass-flow').textContent = fmt(r.mass_flow_kg_per_s, 1);
+  document.getElementById('r-comp-power').textContent = fmt(r.compressor_power_mw, 2);
+  document.getElementById('r-turb-power').textContent = fmt(r.turbine_power_mw, 2);
+  document.getElementById('r-net-power').textContent = fmt(r.net_power_mw, 2);
+  document.getElementById('r-heat-in').textContent = fmt(r.heat_input_mw, 2);
+  document.getElementById('r-heat-rej').textContent = fmt(r.heat_rejection_mw, 2);
   document.getElementById('r-eta').textContent = fmt(r.thermal_efficiency * 100, 2);
 }
 
@@ -90,7 +90,7 @@ function renderStates(states) {
       <td>${i + 1}</td>
       <td>${STATE_LABELS[i]}</td>
       <td>${fmt(s.temperature_c, 1)}</td>
-      <td>${fmt(s.pressure_kpa, 1)}</td>
+      <td>${fmt(s.pressure_mpa, 4)}</td>
       <td>${fmt(s.density_kg_per_m3, 3)}</td>
       <td>${fmt(s.enthalpy_kj_per_kg, 1)}</td>
       <td>${fmt(s.entropy_kj_per_kg_k, 4)}</td>
@@ -112,10 +112,10 @@ function renderCharts(states) {
   const hsPoints = toChartPoints(states, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
   const pvPoints = states.map((s, i) => ({
     x: 1 / s.density_kg_per_m3,
-    y: s.pressure_kpa,
+    y: s.pressure_mpa,
     label: String(i + 1),
   }));
-  const phPoints = toChartPoints(states, 'enthalpy_kj_per_kg', 'pressure_kpa');
+  const phPoints = toChartPoints(states, 'enthalpy_kj_per_kg', 'pressure_mpa');
 
   if (!tsChart) {
     tsChart = createCycleChart(document.getElementById('chart-ts'), {
@@ -139,7 +139,7 @@ function renderCharts(states) {
     pvChart = createCycleChart(document.getElementById('chart-pv'), {
       title: 'P–v',
       xLabel: 'v (m³/kg)',
-      yLabel: 'P (kPa)',
+      yLabel: 'P (MPa)',
     });
   }
   pvChart.update(pvPoints);
@@ -148,7 +148,7 @@ function renderCharts(states) {
     phChart = createCycleChart(document.getElementById('chart-ph'), {
       title: 'P–h',
       xLabel: 'h (kJ/kg)',
-      yLabel: 'P (kPa)',
+      yLabel: 'P (MPa)',
     });
   }
   phChart.update(phPoints);

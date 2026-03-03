@@ -8,8 +8,8 @@ use uom::si::{
     f64::{Power, Pressure, Ratio, ThermalConductance, ThermodynamicTemperature},
     mass_density::kilogram_per_cubic_meter,
     mass_rate::kilogram_per_second,
-    power::kilowatt,
-    pressure::kilopascal,
+    power::megawatt,
+    pressure::megapascal,
     ratio::ratio,
     specific_heat_capacity::kilojoule_per_kilogram_kelvin,
     thermal_conductance::kilowatt_per_kelvin,
@@ -35,14 +35,14 @@ pub struct DesignPointInput {
     /// Turbine inlet temperature in degrees Celsius.
     pub turbine_inlet_temp_c: f64,
 
-    /// Compressor inlet (minimum cycle) pressure in kilopascals.
-    pub compressor_inlet_pressure_kpa: f64,
+    /// Compressor inlet (minimum cycle) pressure in megapascals.
+    pub compressor_inlet_pressure_mpa: f64,
 
-    /// Compressor outlet (maximum cycle) pressure in kilopascals.
-    pub compressor_outlet_pressure_kpa: f64,
+    /// Compressor outlet (maximum cycle) pressure in megapascals.
+    pub compressor_outlet_pressure_mpa: f64,
 
-    /// Target net cycle power output in kilowatts.
-    pub net_power_kw: f64,
+    /// Target net cycle power output in megawatts.
+    pub net_power_mw: f64,
 
     // Turbomachinery
     /// Compressor isentropic efficiency as a dimensionless ratio (0–1).
@@ -81,20 +81,20 @@ pub struct DesignPointOutput {
     /// Cycle mass flow rate in kilograms per second.
     pub mass_flow_kg_per_s: f64,
 
-    /// Compressor power consumption in kilowatts.
-    pub compressor_power_kw: f64,
+    /// Compressor power consumption in megawatts.
+    pub compressor_power_mw: f64,
 
-    /// Turbine power output in kilowatts.
-    pub turbine_power_kw: f64,
+    /// Turbine power output in megawatts.
+    pub turbine_power_mw: f64,
 
-    /// Net cycle power output (turbine minus compressor) in kilowatts.
-    pub net_power_kw: f64,
+    /// Net cycle power output (turbine minus compressor) in megawatts.
+    pub net_power_mw: f64,
 
-    /// Primary heat exchanger heat addition rate in kilowatts.
-    pub heat_input_kw: f64,
+    /// Primary heat exchanger heat addition rate in megawatts.
+    pub heat_input_mw: f64,
 
-    /// Precooler heat rejection rate in kilowatts.
-    pub heat_rejection_kw: f64,
+    /// Precooler heat rejection rate in megawatts.
+    pub heat_rejection_mw: f64,
 
     /// Cycle thermal efficiency (`η = W_net / Q_in`), dimensionless.
     pub thermal_efficiency: f64,
@@ -118,8 +118,8 @@ pub struct StatePoint {
     /// Temperature in degrees Celsius.
     pub temperature_c: f64,
 
-    /// Pressure in kilopascals.
-    pub pressure_kpa: f64,
+    /// Pressure in megapascals.
+    pub pressure_mpa: f64,
 
     /// Mass density in kilograms per cubic metre.
     pub density_kg_per_m3: f64,
@@ -154,9 +154,9 @@ fn convert_input(input: &DesignPointInput) -> Result<(OperatingPoint, Config), S
     let op = OperatingPoint {
         t_comp_in: ThermodynamicTemperature::new::<degree_celsius>(input.compressor_inlet_temp_c),
         t_turb_in: ThermodynamicTemperature::new::<degree_celsius>(input.turbine_inlet_temp_c),
-        p_comp_in: Pressure::new::<kilopascal>(input.compressor_inlet_pressure_kpa),
-        p_comp_out: Pressure::new::<kilopascal>(input.compressor_outlet_pressure_kpa),
-        net_power: Power::new::<kilowatt>(input.net_power_kw),
+        p_comp_in: Pressure::new::<megapascal>(input.compressor_inlet_pressure_mpa),
+        p_comp_out: Pressure::new::<megapascal>(input.compressor_outlet_pressure_mpa),
+        net_power: Power::new::<megawatt>(input.net_power_mw),
     };
 
     let eta_comp = IsentropicEfficiency::new(input.compressor_efficiency)
@@ -209,7 +209,7 @@ fn convert_output(
 
         StatePoint {
             temperature_c: s.temperature.get::<degree_celsius>(),
-            pressure_kpa: pressure.get::<kilopascal>(),
+            pressure_mpa: pressure.get::<megapascal>(),
             density_kg_per_m3: s.density.get::<kilogram_per_cubic_meter>(),
             enthalpy_kj_per_kg: enthalpy.get::<kilojoule_per_kilogram>(),
             entropy_kj_per_kg_k: entropy.get::<kilojoule_per_kilogram_kelvin>(),
@@ -220,11 +220,11 @@ fn convert_output(
 
     DesignPointOutput {
         mass_flow_kg_per_s: solution.m_dot.get::<kilogram_per_second>(),
-        compressor_power_kw: solution.w_dot_comp.get::<kilowatt>(),
-        turbine_power_kw: solution.w_dot_turb.get::<kilowatt>(),
-        net_power_kw: w_dot_net.get::<kilowatt>(),
-        heat_input_kw: solution.q_dot_phx.get::<kilowatt>(),
-        heat_rejection_kw: solution.q_dot_pc.get::<kilowatt>(),
+        compressor_power_mw: solution.w_dot_comp.get::<megawatt>(),
+        turbine_power_mw: solution.w_dot_turb.get::<megawatt>(),
+        net_power_mw: w_dot_net.get::<megawatt>(),
+        heat_input_mw: solution.q_dot_phx.get::<megawatt>(),
+        heat_rejection_mw: solution.q_dot_pc.get::<megawatt>(),
         thermal_efficiency: solution.eta_thermal.get::<ratio>(),
         states: points,
     }
@@ -238,9 +238,9 @@ mod tests {
         DesignPointInput {
             compressor_inlet_temp_c: 50.0,
             turbine_inlet_temp_c: 500.0,
-            compressor_inlet_pressure_kpa: 100.0,
-            compressor_outlet_pressure_kpa: 300.0,
-            net_power_kw: 10_000.0,
+            compressor_inlet_pressure_mpa: 0.1,
+            compressor_outlet_pressure_mpa: 0.3,
+            net_power_mw: 10.0,
             compressor_efficiency: 0.89,
             turbine_efficiency: 0.93,
             recuperator_ua_kw_per_k: 2000.0,
@@ -260,18 +260,18 @@ mod tests {
 
         // Physical constraints.
         assert!(out.mass_flow_kg_per_s > 0.0);
-        assert!(out.turbine_power_kw > out.compressor_power_kw);
+        assert!(out.turbine_power_mw > out.compressor_power_mw);
         assert!(out.thermal_efficiency > 0.0);
         assert!(out.thermal_efficiency < 1.0);
-        assert!(out.heat_input_kw > 0.0);
-        assert!(out.heat_rejection_kw > 0.0);
+        assert!(out.heat_input_mw > 0.0);
+        assert!(out.heat_rejection_mw > 0.0);
 
         // Net power close to target.
-        let relative_error = (out.net_power_kw - 10_000.0).abs() / 10_000.0;
+        let relative_error = (out.net_power_mw - 10.0).abs() / 10.0;
         assert!(
             relative_error < 1e-6,
-            "net power {:.3} kW deviates too far from target",
-            out.net_power_kw,
+            "net power {:.6} MW deviates too far from target",
+            out.net_power_mw,
         );
     }
 
@@ -285,9 +285,9 @@ mod tests {
                 "state {i} temperature is NaN",
             );
             assert!(
-                !state.pressure_kpa.is_nan() && state.pressure_kpa > 0.0,
+                !state.pressure_mpa.is_nan() && state.pressure_mpa > 0.0,
                 "state {i} pressure is invalid: {}",
-                state.pressure_kpa,
+                state.pressure_mpa,
             );
             assert!(
                 !state.density_kg_per_m3.is_nan() && state.density_kg_per_m3 > 0.0,
@@ -314,30 +314,30 @@ mod tests {
 
         // High-pressure side: compressor outlet → recuperator cold → PHX → turbine inlet.
         assert!(
-            s2.pressure_kpa > s3.pressure_kpa,
+            s2.pressure_mpa > s3.pressure_mpa,
             "P2 ({}) must exceed P3 ({})",
-            s2.pressure_kpa,
-            s3.pressure_kpa,
+            s2.pressure_mpa,
+            s3.pressure_mpa,
         );
         assert!(
-            s3.pressure_kpa > s4.pressure_kpa,
+            s3.pressure_mpa > s4.pressure_mpa,
             "P3 ({}) must exceed P4 ({})",
-            s3.pressure_kpa,
-            s4.pressure_kpa,
+            s3.pressure_mpa,
+            s4.pressure_mpa,
         );
 
         // Low-pressure side: turbine outlet → recuperator hot → precooler → compressor inlet.
         assert!(
-            s5.pressure_kpa > s6.pressure_kpa,
+            s5.pressure_mpa > s6.pressure_mpa,
             "P5 ({}) must exceed P6 ({})",
-            s5.pressure_kpa,
-            s6.pressure_kpa,
+            s5.pressure_mpa,
+            s6.pressure_mpa,
         );
         assert!(
-            s6.pressure_kpa > s1.pressure_kpa,
+            s6.pressure_mpa > s1.pressure_mpa,
             "P6 ({}) must exceed P1 ({})",
-            s6.pressure_kpa,
-            s1.pressure_kpa,
+            s6.pressure_mpa,
+            s1.pressure_mpa,
         );
     }
 

@@ -24,14 +24,14 @@
         <label>Turbine inlet temperature (°C)
           <input type="number" id="turbine_inlet_temp_c" value="550" step="1">
         </label>
-        <label>Compressor inlet pressure (kPa)
-          <input type="number" id="compressor_inlet_pressure_kpa" value="8000" step="10">
+        <label>Compressor inlet pressure (MPa)
+          <input type="number" id="compressor_inlet_pressure_mpa" value="8" step="0.1">
         </label>
-        <label>Compressor outlet pressure (kPa)
-          <input type="number" id="compressor_outlet_pressure_kpa" value="20000" step="10">
+        <label>Compressor outlet pressure (MPa)
+          <input type="number" id="compressor_outlet_pressure_mpa" value="20" step="0.1">
         </label>
-        <label>Net power (kW)
-          <input type="number" id="net_power_kw" value="10000" step="100">
+        <label>Net power (MW)
+          <input type="number" id="net_power_mw" value="10" step="1">
         </label>
       </fieldset>
 
@@ -89,11 +89,11 @@
           <table id="scalar-table">
             <tbody>
               <tr><td>Mass flow rate</td><td id="r-mass-flow">—</td><td>kg/s</td></tr>
-              <tr><td>Compressor power</td><td id="r-comp-power">—</td><td>kW</td></tr>
-              <tr><td>Turbine power</td><td id="r-turb-power">—</td><td>kW</td></tr>
-              <tr><td>Net power</td><td id="r-net-power">—</td><td>kW</td></tr>
-              <tr><td>Heat input</td><td id="r-heat-in">—</td><td>kW</td></tr>
-              <tr><td>Heat rejection</td><td id="r-heat-rej">—</td><td>kW</td></tr>
+              <tr><td>Compressor power</td><td id="r-comp-power">—</td><td>MW</td></tr>
+              <tr><td>Turbine power</td><td id="r-turb-power">—</td><td>MW</td></tr>
+              <tr><td>Net power</td><td id="r-net-power">—</td><td>MW</td></tr>
+              <tr><td>Heat input</td><td id="r-heat-in">—</td><td>MW</td></tr>
+              <tr><td>Heat rejection</td><td id="r-heat-rej">—</td><td>MW</td></tr>
               <tr><td>Thermal efficiency</td><td id="r-eta">—</td><td>%</td></tr>
             </tbody>
           </table>
@@ -107,7 +107,7 @@
                 <th>#</th>
                 <th>Location</th>
                 <th>T (°C)</th>
-                <th>P (kPa)</th>
+                <th>P (MPa)</th>
                 <th>ρ (kg/m³)</th>
                 <th>h (kJ/kg)</th>
                 <th>s (kJ/kg·K)</th>
