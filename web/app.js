@@ -74,13 +74,14 @@ function fmt(v, decimals = 2) {
 }
 
 function renderScalars(r) {
+  document.getElementById('r-eta').textContent = fmt(r.thermal_efficiency * 100, 2);
   document.getElementById('r-mass-flow').textContent = fmt(r.mass_flow_kg_per_s, 1);
   document.getElementById('r-comp-power').textContent = fmt(r.compressor_power_mw, 2);
   document.getElementById('r-turb-power').textContent = fmt(r.turbine_power_mw, 2);
-  document.getElementById('r-net-power').textContent = fmt(r.net_power_mw, 2);
   document.getElementById('r-heat-in').textContent = fmt(r.heat_input_mw, 2);
   document.getElementById('r-heat-rej').textContent = fmt(r.heat_rejection_mw, 2);
-  document.getElementById('r-eta').textContent = fmt(r.thermal_efficiency * 100, 2);
+  document.getElementById('r-recup-q').textContent = fmt(r.recuperator_heat_transfer_mw, 2);
+  document.getElementById('r-recup-min-dt').textContent = fmt(r.recuperator_min_delta_t_k, 1);
 }
 
 function renderStates(states) {

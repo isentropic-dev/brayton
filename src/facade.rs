@@ -14,6 +14,7 @@ use uom::si::{
     pressure::megapascal,
     ratio::ratio,
     specific_heat_capacity::kilojoule_per_kilogram_kelvin,
+    temperature_interval::kelvin as delta_kelvin,
     thermal_conductance::kilowatt_per_kelvin,
     thermodynamic_temperature::degree_celsius,
 };
@@ -113,6 +114,12 @@ pub struct DesignPointOutput {
 
     /// Cycle thermal efficiency (`η = W_net / Q_in`), dimensionless.
     pub thermal_efficiency: f64,
+
+    /// Recuperator heat transfer rate in megawatts.
+    pub recuperator_heat_transfer_mw: f64,
+
+    /// Minimum hot-to-cold temperature difference in the recuperator, in kelvin.
+    pub recuperator_min_delta_t_k: f64,
 
     /// Thermodynamic states at the six cycle points.
     ///
@@ -283,6 +290,8 @@ where
         heat_input_mw: solution.q_dot_phx.get::<megawatt>(),
         heat_rejection_mw: solution.q_dot_pc.get::<megawatt>(),
         thermal_efficiency: solution.eta_thermal.get::<ratio>(),
+        recuperator_heat_transfer_mw: solution.q_dot_recup.get::<megawatt>(),
+        recuperator_min_delta_t_k: solution.recuperator_min_delta_t.get::<delta_kelvin>(),
         states: points,
     }
 }
