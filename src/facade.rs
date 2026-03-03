@@ -1,8 +1,10 @@
 use twine_models::support::thermo::{
     capability::{HasEnthalpy, HasEntropy, HasPressure},
     fluid::CarbonDioxide,
-    model::PerfectGas,
+    model::{CoolProp, PerfectGas},
 };
+
+use crate::fluids::{Butane, Helium, Nitrogen};
 use uom::si::{
     available_energy::kilojoule_per_kilogram,
     f64::{Power, Pressure, Ratio, ThermalConductance, ThermodynamicTemperature},
@@ -28,6 +30,19 @@ use crate::{
 /// fractions as dimensionless ratios (0–1).
 #[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
 pub struct DesignPointInput {
+    /// Thermodynamic model to use.
+    ///
+    /// `"PerfectGas"` (default) or `"CoolProp"`.
+    #[cfg_attr(feature = "wasm", serde(default = "default_model"))]
+    pub model: String,
+
+    /// Working fluid for `CoolProp` calculations.
+    ///
+    /// `"CarbonDioxide"` (default), `"Nitrogen"`, `"Helium"`, or `"Butane"`.
+    /// Ignored when `model` is `"PerfectGas"` (always uses CO₂).
+    #[cfg_attr(feature = "wasm", serde(default = "default_fluid"))]
+    pub fluid: String,
+
     // Operating point
     /// Compressor inlet temperature in degrees Celsius.
     pub compressor_inlet_temp_c: f64,
@@ -131,22 +146,61 @@ pub struct StatePoint {
     pub entropy_kj_per_kg_k: f64,
 }
 
+/// Default model name for serde deserialization.
+#[cfg(feature = "wasm")]
+fn default_model() -> String {
+    String::from("PerfectGas")
+}
+
+/// Default fluid name for serde deserialization.
+#[cfg(feature = "wasm")]
+fn default_fluid() -> String {
+    String::from("CarbonDioxide")
+}
+
 /// Run a simple recuperated Brayton cycle design-point calculation.
 ///
-/// Hardcodes [`PerfectGas`]`<`[`CarbonDioxide`]`>` as the thermodynamic model.
-/// Takes plain-data input and returns plain-data output, suitable for FFI,
-/// WASM, and Python bindings.
+/// Dispatches to the thermodynamic model specified in `input.model`
+/// (`"PerfectGas"` or `"CoolProp"`) and, for `CoolProp`, the fluid
+/// specified in `input.fluid`.
 ///
 /// # Errors
 ///
 /// Returns a descriptive error string on invalid input or solver failure.
 pub fn design_point(input: &DesignPointInput) -> Result<DesignPointOutput, String> {
+    /// Construct a `CoolProp` model, solve, and convert to output.
+    fn solve_coolprop<
+        F: Clone + Default + twine_models::support::thermo::model::coolprop::CoolPropFluid,
+    >(
+        op: crate::OperatingPoint,
+        config: &Config,
+    ) -> Result<DesignPointOutput, String> {
+        let thermo = CoolProp::<F>::new()
+            .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
+        let solution = crate::cycle::design_point(op, config, F::default(), &thermo)
+            .map_err(|e| e.to_string())?;
+        Ok(convert_output(&solution, &thermo))
+    }
+
     let (op, config) = convert_input(input)?;
-    let thermo = PerfectGas::<CarbonDioxide>::new()
-        .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
-    let solution = crate::cycle::design_point(op, &config, CarbonDioxide, &thermo)
-        .map_err(|e| e.to_string())?;
-    Ok(convert_output(&solution, &thermo))
+
+    match input.model.as_str() {
+        "PerfectGas" => {
+            let thermo = PerfectGas::<CarbonDioxide>::new()
+                .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
+            let solution = crate::cycle::design_point(op, &config, CarbonDioxide, &thermo)
+                .map_err(|e| e.to_string())?;
+            Ok(convert_output(&solution, &thermo))
+        }
+        "CoolProp" => match input.fluid.as_str() {
+            "CarbonDioxide" => solve_coolprop::<CarbonDioxide>(op, &config),
+            "Nitrogen" => solve_coolprop::<Nitrogen>(op, &config),
+            "Helium" => solve_coolprop::<Helium>(op, &config),
+            "Butane" => solve_coolprop::<Butane>(op, &config),
+            other => Err(format!("unknown fluid: {other}")),
+        },
+        other => Err(format!("unknown model: {other}")),
+    }
 }
 
 /// Convert a [`DesignPointInput`] into core types, validating all fields.
@@ -193,10 +247,13 @@ fn convert_input(input: &DesignPointInput) -> Result<(OperatingPoint, Config), S
 }
 
 /// Convert a [`crate::Solution`] to a [`DesignPointOutput`], extracting plain-data values.
-fn convert_output(
-    solution: &crate::Solution<CarbonDioxide>,
-    thermo: &PerfectGas<CarbonDioxide>,
-) -> DesignPointOutput {
+fn convert_output<Fluid, Thermo>(
+    solution: &crate::Solution<Fluid>,
+    thermo: &Thermo,
+) -> DesignPointOutput
+where
+    Thermo: HasPressure<Fluid = Fluid> + HasEnthalpy<Fluid = Fluid> + HasEntropy<Fluid = Fluid>,
+{
     let states = &solution.states;
     let state_array = [
         &states.s1, &states.s2, &states.s3, &states.s4, &states.s5, &states.s6,
@@ -236,6 +293,8 @@ mod tests {
 
     fn baseline_input() -> DesignPointInput {
         DesignPointInput {
+            model: String::from("PerfectGas"),
+            fluid: String::from("CarbonDioxide"),
             compressor_inlet_temp_c: 50.0,
             turbine_inlet_temp_c: 500.0,
             compressor_inlet_pressure_mpa: 0.1,
@@ -339,6 +398,73 @@ mod tests {
             s6.pressure_mpa,
             s1.pressure_mpa,
         );
+    }
+
+    #[test]
+    fn smoke_test_coolprop() {
+        // Dashboard-default sCO₂ conditions.
+        let input = DesignPointInput {
+            model: String::from("CoolProp"),
+            compressor_inlet_temp_c: 32.0,
+            compressor_inlet_pressure_mpa: 8.0,
+            compressor_outlet_pressure_mpa: 20.0,
+            turbine_inlet_temp_c: 550.0,
+            ..baseline_input()
+        };
+        let result = design_point(&input);
+        assert!(result.is_ok(), "expected Ok, got: {:?}", result.err());
+        let out = result.unwrap();
+
+        assert!(out.mass_flow_kg_per_s > 0.0);
+        assert!(out.turbine_power_mw > out.compressor_power_mw);
+        assert!(out.thermal_efficiency > 0.0);
+        assert!(out.thermal_efficiency < 1.0);
+    }
+
+    #[test]
+    fn smoke_test_coolprop_nitrogen() {
+        // Verify non-CO₂ fluid dispatch works end-to-end.
+        // One non-CO₂ fluid is sufficient — the others follow the same
+        // code path and differ only in the CoolPropFluid::NAME constant.
+        let input = DesignPointInput {
+            model: String::from("CoolProp"),
+            fluid: String::from("Nitrogen"),
+            compressor_inlet_temp_c: 30.0,
+            compressor_inlet_pressure_mpa: 0.1,
+            compressor_outlet_pressure_mpa: 0.3,
+            turbine_inlet_temp_c: 500.0,
+            recuperator_segments: 10,
+            ..baseline_input()
+        };
+        let result = design_point(&input);
+        assert!(result.is_ok(), "expected Ok, got: {:?}", result.err());
+        let out = result.unwrap();
+
+        assert!(out.thermal_efficiency > 0.0);
+        assert!(out.thermal_efficiency < 1.0);
+    }
+
+    #[test]
+    fn unknown_fluid_returns_error() {
+        let input = DesignPointInput {
+            model: String::from("CoolProp"),
+            fluid: String::from("Unobtanium"),
+            ..baseline_input()
+        };
+        let result = design_point(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("unknown fluid"));
+    }
+
+    #[test]
+    fn unknown_model_returns_error() {
+        let input = DesignPointInput {
+            model: String::from("Bogus"),
+            ..baseline_input()
+        };
+        let result = design_point(&input);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("unknown model"));
     }
 
     #[test]

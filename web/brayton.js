@@ -38,6 +38,18 @@ function makeImports() {
         return 0;
       },
       environ_get: () => 0,
+      fd_close: () => 0,
+      fd_read: (fd, iovPtr, iovLen, nreadPtr) => {
+        // Signal EOF by reporting zero bytes read.
+        const view = new DataView(wasm.memory.buffer);
+        view.setUint32(nreadPtr, 0, true);
+        return 0;
+      },
+      fd_seek: (fd, offsetLo, offsetHi, whence, newoffsetPtr) => {
+        const view = new DataView(wasm.memory.buffer);
+        view.setBigUint64(newoffsetPtr, 0n, true);
+        return 0;
+      },
       fd_write: (fd, iovPtr, iovLen, nwrittenPtr) => {
         // Route fd_write to console.warn for panic/debug messages.
         const view = new DataView(wasm.memory.buffer);
@@ -54,10 +66,19 @@ function makeImports() {
         view.setUint32(nwrittenPtr, written, true);
         return 0;
       },
+      // Simplified: always returns monotonic time regardless of clockId.
+      // CoolProp only uses this for internal timing, not wall-clock time.
+      clock_time_get: (clockId, precision, timePtr) => {
+        const view = new DataView(wasm.memory.buffer);
+        const now = BigInt(Math.round(performance.now() * 1e6));
+        view.setBigUint64(timePtr, now, true);
+        return 0;
+      },
     },
     env: {
       emscripten_notify_memory_growth: () => {},
       __syscall_getcwd: () => -1,
+      __syscall_getdents64: () => -1,
     },
   };
 }

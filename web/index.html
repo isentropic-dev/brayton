@@ -9,12 +9,25 @@
 <body>
   <header>
     <h1>Brayton Cycle — Design Point</h1>
-    <p class="subtitle"><span>Simple recuperated sCO₂ cycle</span><span>runs in your browser via WASM</span></p>
+    <p class="subtitle"><span>Simple recuperated cycle</span><span>runs in your browser via WASM</span></p>
   </header>
 
   <main>
     <section class="inputs">
       <h2>Inputs</h2>
+
+      <fieldset>
+        <legend>Model</legend>
+        <label>Thermodynamic model
+          <select id="model">
+            <option value="PerfectGas">Perfect Gas</option>
+            <option value="CoolProp" selected>CoolProp</option>
+          </select>
+        </label>
+        <label>Working fluid
+          <select id="fluid"></select>
+        </label>
+      </fieldset>
 
       <fieldset>
         <legend>Operating Point</legend>

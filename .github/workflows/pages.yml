@@ -32,8 +32,19 @@ jobs:
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v14
 
+      - name: Clone CoolProp source
+        uses: actions/checkout@v4
+        with:
+          repository: CoolProp/CoolProp
+          path: CoolProp
+          submodules: recursive
+          # Pin to the version vendored in twine-models 0.2.2.
+          ref: 98b3523d5daa98454618d381d2ae53f7471d216b
+
       - name: Build WASM
         run: cargo build --target wasm32-unknown-emscripten --features wasm --release
+        env:
+          COOLPROP_SOURCE_DIR: ${{ github.workspace }}/CoolProp
 
       - name: Assemble site
         run: |

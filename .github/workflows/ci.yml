@@ -21,6 +21,15 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Clone CoolProp source
+        uses: actions/checkout@v4
+        with:
+          repository: CoolProp/CoolProp
+          path: CoolProp
+          submodules: recursive
+          # Pin to the version vendored in twine-models 0.2.2.
+          ref: 98b3523d5daa98454618d381d2ae53f7471d216b
+
       - name: Set up cache
         uses: Swatinem/rust-cache@v2
 
@@ -29,6 +38,10 @@ jobs:
 
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features -- -W clippy::pedantic -D warnings
+        env:
+          COOLPROP_SOURCE_DIR: ${{ github.workspace }}/CoolProp
 
       - name: Run tests
         run: cargo test --all-features
+        env:
+          COOLPROP_SOURCE_DIR: ${{ github.workspace }}/CoolProp
