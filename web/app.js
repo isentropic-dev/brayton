@@ -1,5 +1,6 @@
-import { init, designPoint } from './brayton.js';
+import { init, designPoint, statesFromPh, statesFromPs } from './brayton.js';
 import { createCycleChart } from './cycle-chart.js';
+import { createRecupChart } from './recup-chart.js';
 
 const STATE_LABELS = [
   'Compressor in',
@@ -30,6 +31,7 @@ let tsChart = null;
 let hsChart = null;
 let pvChart = null;
 let phChart = null;
+let recupChart = null;
 
 // Fields where the UI shows percent but the facade expects a 0–1 fraction.
 // Fields where the UI shows percent but the facade expects a 0–1 value.
@@ -102,23 +104,146 @@ function renderStates(states) {
   });
 }
 
-function toChartPoints(states, xKey, yKey) {
-  return states.map((s, i) => ({
-    x: s[xKey],
-    y: s[yKey],
-    label: String(i + 1),
+const N_CURVE_POINTS = 30;
+
+/**
+ * Linearly interpolate N values between a and b (inclusive of both endpoints).
+ */
+function linspace(a, b, n) {
+  const arr = new Array(n);
+  for (let i = 0; i < n; i++) {
+    arr[i] = a + (b - a) * i / (n - 1);
+  }
+  return arr;
+}
+
+/**
+ * Build smooth curve points for all 6 process paths around the cycle.
+ *
+ * Returns an array of StatePoint objects (with `label` on the 6 state points)
+ * ordered sequentially around the cycle: 1→2, 2→3, 3→4, 4→5, 5→6, 6→1.
+ */
+function buildCurvePoints(states, model, fluid) {
+  const [s1, s2, s3, s4, s5, s6] = states;
+  const n = N_CURVE_POINTS;
+  const base = { model, fluid };
+
+  // Each segment: [from, to, method].
+  // "ph" segments use statesFromPh (isobaric-ish HXs, recuperator).
+  // "ps" segments use statesFromPs (turbomachinery).
+  const segments = [
+    { from: s1, to: s2, method: 'ps', label_from: '1' },
+    { from: s2, to: s3, method: 'ph', label_from: '2' },
+    { from: s3, to: s4, method: 'ph', label_from: '3' },
+    { from: s4, to: s5, method: 'ps', label_from: '4' },
+    { from: s5, to: s6, method: 'ph', label_from: '5' },
+    { from: s6, to: s1, method: 'ph', label_from: '6' },
+  ];
+
+  const allPoints = [];
+
+  for (const seg of segments) {
+    const pressures = linspace(seg.from.pressure_mpa, seg.to.pressure_mpa, n);
+
+    let curveStates;
+    if (seg.method === 'ph') {
+      const enthalpies = linspace(
+        seg.from.enthalpy_kj_per_kg,
+        seg.to.enthalpy_kj_per_kg,
+        n,
+      );
+      curveStates = statesFromPh({
+        ...base,
+        pressures_mpa: pressures,
+        enthalpies_kj_per_kg: enthalpies,
+      });
+    } else {
+      const entropies = linspace(
+        seg.from.entropy_kj_per_kg_k,
+        seg.to.entropy_kj_per_kg_k,
+        n,
+      );
+      curveStates = statesFromPs({
+        ...base,
+        pressures_mpa: pressures,
+        entropies_kj_per_kg_k: entropies,
+      });
+    }
+
+    // Label the first point of each segment; skip the last to avoid
+    // duplicates (the next segment's first point is the same state).
+    for (let i = 0; i < curveStates.length - 1; i++) {
+      const pt = curveStates[i];
+      if (i === 0) pt.label = seg.label_from;
+      allPoints.push(pt);
+    }
+  }
+
+  return allPoints;
+}
+
+/**
+ * Extract chart-specific (x, y) pairs from curve points.
+ */
+function toChartPoints(curvePoints, xKey, yKey) {
+  return curvePoints.map(p => ({
+    x: p[xKey],
+    y: p[yKey],
+    label: p.label,
   }));
 }
 
-function renderCharts(states) {
-  const tsPoints = toChartPoints(states, 'entropy_kj_per_kg_k', 'temperature_c');
-  const hsPoints = toChartPoints(states, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
-  const pvPoints = states.map((s, i) => ({
-    x: 1 / s.density_kg_per_m3,
-    y: s.pressure_mpa,
-    label: String(i + 1),
+function renderRecupProfile(states, model, fluid) {
+  const [, s2, s3, , s5, s6] = states;
+  const n = N_CURVE_POINTS;
+  const base = { model, fluid };
+
+  try {
+    // Cold side (s2→s3): left to right.
+    const coldStates = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s2.pressure_mpa, s3.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s2.enthalpy_kj_per_kg, s3.enthalpy_kj_per_kg, n),
+    });
+
+    // Hot side (s5→s6): counterflow, so hot inlet (s5) is at the cold
+    // outlet end (right). Reverse so position 0 = cold inlet end.
+    const hotStates = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s5.pressure_mpa, s6.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s5.enthalpy_kj_per_kg, s6.enthalpy_kj_per_kg, n),
+    }).reverse();
+
+    const coldTemps = coldStates.map(s => s.temperature_c);
+    const hotTemps = hotStates.map(s => s.temperature_c);
+
+    if (!recupChart) {
+      recupChart = createRecupChart(document.getElementById('chart-recup'));
+    }
+    recupChart.update(hotTemps, coldTemps);
+  } catch {
+    // Silently skip if profile generation fails.
+  }
+}
+
+function renderCharts(states, model, fluid) {
+  let curvePoints;
+  try {
+    curvePoints = buildCurvePoints(states, model, fluid);
+  } catch {
+    // Fall back to straight lines between state points if curve
+    // generation fails (e.g., thermo model can't evaluate a point).
+    curvePoints = states.map((s, i) => ({ ...s, label: String(i + 1) }));
+  }
+
+  const tsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'temperature_c');
+  const hsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
+  const pvPoints = curvePoints.map(p => ({
+    x: 1 / p.density_kg_per_m3,
+    y: p.pressure_mpa,
+    label: p.label,
   }));
-  const phPoints = toChartPoints(states, 'enthalpy_kj_per_kg', 'pressure_mpa');
+  const phPoints = toChartPoints(curvePoints, 'enthalpy_kj_per_kg', 'pressure_mpa');
 
   if (!tsChart) {
     tsChart = createCycleChart(document.getElementById('chart-ts'), {
@@ -181,7 +306,8 @@ function calculate() {
     clearError();
     renderScalars(result);
     renderStates(result.states);
-    renderCharts(result.states);
+    renderRecupProfile(result.states, input.model, input.fluid);
+    renderCharts(result.states, input.model, input.fluid);
   } catch (e) {
     showError(e.message || String(e));
   }

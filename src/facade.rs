@@ -6,14 +6,11 @@ use twine_models::support::thermo::{
 
 use crate::fluids::{Butane, Helium, Nitrogen};
 use uom::si::{
-    available_energy::kilojoule_per_kilogram,
     f64::{Power, Pressure, Ratio, ThermalConductance, ThermodynamicTemperature},
-    mass_density::kilogram_per_cubic_meter,
     mass_rate::kilogram_per_second,
     power::megawatt,
     pressure::megapascal,
     ratio::ratio,
-    specific_heat_capacity::kilojoule_per_kilogram_kelvin,
     temperature_interval::kelvin as delta_kelvin,
     thermal_conductance::kilowatt_per_kelvin,
     thermodynamic_temperature::degree_celsius,
@@ -266,19 +263,7 @@ where
         &states.s1, &states.s2, &states.s3, &states.s4, &states.s5, &states.s6,
     ];
 
-    let points = state_array.map(|s| {
-        let pressure = thermo.pressure(s).expect("pressure must be defined");
-        let enthalpy = thermo.enthalpy(s).expect("enthalpy must be defined");
-        let entropy = thermo.entropy(s).expect("entropy must be defined");
-
-        StatePoint {
-            temperature_c: s.temperature.get::<degree_celsius>(),
-            pressure_mpa: pressure.get::<megapascal>(),
-            density_kg_per_m3: s.density.get::<kilogram_per_cubic_meter>(),
-            enthalpy_kj_per_kg: enthalpy.get::<kilojoule_per_kilogram>(),
-            entropy_kj_per_kg_k: entropy.get::<kilojoule_per_kilogram_kelvin>(),
-        }
-    });
+    let points = state_array.map(|s| crate::thermo::state_to_point(s, thermo));
 
     let w_dot_net = solution.w_dot_turb - solution.w_dot_comp;
 

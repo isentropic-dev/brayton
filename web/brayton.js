@@ -115,20 +115,50 @@ export async function init() {
 }
 
 /**
- * Run a design-point calculation.
- * @param {Object} input — plain object matching DesignPointInput fields
- * @returns {Object} — DesignPointOutput fields
- * @throws {Error} on invalid input or solver failure
+ * Call a WASM function that takes JSON input and returns JSON output.
+ * Handles string marshalling and error extraction.
  */
-export function designPoint(input) {
+function callWasm(fn_name, input) {
   if (!wasm) throw new Error('WASM not initialized — call init() first');
+  if (!wasm[fn_name]) throw new Error(`WASM function "${fn_name}" not found`);
 
   const inputPtr = writeString(JSON.stringify(input));
-  const resultPtr = wasm.design_point(inputPtr);
+  const resultPtr = wasm[fn_name](inputPtr);
+  wasm.free(inputPtr);
   const json = readString(resultPtr);
   wasm.free_result(resultPtr);
 
   const result = JSON.parse(json);
   if (result.error) throw new Error(result.error);
   return result;
+}
+
+/**
+ * Run a design-point calculation.
+ * @param {Object} input — plain object matching DesignPointInput fields
+ * @returns {Object} — DesignPointOutput fields
+ * @throws {Error} on invalid input or solver failure
+ */
+export function designPoint(input) {
+  return callWasm('design_point', input);
+}
+
+/**
+ * Compute thermodynamic states from arrays of pressure and enthalpy.
+ * @param {Object} input — { model, fluid, pressures_mpa: number[], enthalpies_kj_per_kg: number[] }
+ * @returns {Object[]} — array of StatePoint objects
+ * @throws {Error} on invalid input or thermo model failure
+ */
+export function statesFromPh(input) {
+  return callWasm('states_from_ph', input);
+}
+
+/**
+ * Compute thermodynamic states from arrays of pressure and entropy.
+ * @param {Object} input — { model, fluid, pressures_mpa: number[], entropies_kj_per_kg_k: number[] }
+ * @returns {Object[]} — array of StatePoint objects
+ * @throws {Error} on invalid input or thermo model failure
+ */
+export function statesFromPs(input) {
+  return callWasm('states_from_ps', input);
 }

@@ -5,6 +5,9 @@ pub mod facade;
 mod fluids;
 mod operating_point;
 mod solution;
+// TODO: remove once non-WASM consumers use the batch helpers.
+#[allow(dead_code)]
+pub(crate) mod thermo;
 
 #[cfg(feature = "wasm")]
 mod emscripten;

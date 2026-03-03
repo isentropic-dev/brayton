@@ -128,8 +128,9 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Points and labels.
+    // Points and labels (only for labeled state points).
     for (const p of points) {
+      if (!p.label) continue;
       const cx = toCanvasX(p.x);
       const cy = toCanvasY(p.y);
 
@@ -138,12 +139,10 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
       ctx.fillStyle = COLORS.point;
       ctx.fill();
 
-      if (p.label) {
-        ctx.fillStyle = COLORS.label;
-        ctx.font = 'bold 11px -apple-system, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(p.label, cx + 7, cy - 7);
-      }
+      ctx.fillStyle = COLORS.label;
+      ctx.font = 'bold 11px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(p.label, cx + 7, cy - 7);
     }
 
     // Title.
