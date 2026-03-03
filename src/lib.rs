@@ -6,7 +6,7 @@ mod operating_point;
 mod solution;
 
 #[cfg(feature = "wasm")]
-mod wasm;
+mod emscripten;
 
 pub use config::{
     Config, HxConfig, InvalidPressureDrop, IsentropicEfficiency, PressureDrop, RecuperatorConfig,
