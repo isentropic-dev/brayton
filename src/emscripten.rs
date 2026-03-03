@@ -55,7 +55,6 @@ pub extern "C" fn free_result(ptr: *const c_char) {
 
 /// Build an `{"error": "..."}` JSON response as a C string.
 fn error_json(msg: &str) -> *const c_char {
-    let escaped = msg.replace('\\', "\\\\").replace('"', "\\\"");
-    let json = format!(r#"{{"error":"{escaped}"}}"#);
+    let json = format!(r#"{{"error":{}}}"#, serde_json::to_string(msg).unwrap());
     CString::new(json).unwrap().into_raw()
 }
