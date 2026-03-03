@@ -1,5 +1,5 @@
 use twine_models::support::thermo::State;
-use uom::si::f64::{MassRate, Power, Ratio};
+use uom::si::f64::{MassRate, Power, Ratio, TemperatureInterval};
 
 /// Model solution at the design point for a closed Brayton cycle.
 #[derive(Debug, Clone)]
@@ -24,6 +24,12 @@ pub struct Solution<Fluid> {
 
     /// Thermal efficiency (`η = W_net / Q_in`).
     pub eta_thermal: Ratio,
+
+    /// Recuperator heat transfer rate.
+    pub q_dot_recup: Power,
+
+    /// Minimum hot-to-cold temperature difference in the recuperator.
+    pub recuperator_min_delta_t: TemperatureInterval,
 }
 
 /// Thermodynamic states around the cycle.

@@ -111,6 +111,8 @@ where
     })?;
     let s3 = recup_result.top_outlet;
     let s6 = recup_result.bottom_outlet;
+    let q_dot_recup = recup_result.q_dot.magnitude();
+    let recuperator_min_delta_t = recup_result.min_delta_t.value;
 
     // Heat rejection from precooler energy balance: q = h6 - h1.
     let h6 = thermo
@@ -154,5 +156,7 @@ where
         q_dot_pc,
         q_dot_phx,
         eta_thermal,
+        q_dot_recup,
+        recuperator_min_delta_t,
     })
 }

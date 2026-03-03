@@ -31,6 +31,9 @@
 
       <fieldset>
         <legend>Operating Point</legend>
+        <label>Net power (MW)
+          <input type="number" id="net_power_mw" value="10" step="1">
+        </label>
         <label>Compressor inlet temperature (°C)
           <input type="number" id="compressor_inlet_temp_c" value="32" step="1">
         </label>
@@ -42,9 +45,6 @@
         </label>
         <label>Compressor outlet pressure (MPa)
           <input type="number" id="compressor_outlet_pressure_mpa" value="20" step="0.1">
-        </label>
-        <label>Net power (MW)
-          <input type="number" id="net_power_mw" value="10" step="1">
         </label>
       </fieldset>
 
@@ -101,13 +101,14 @@
           <h3>Performance</h3>
           <table id="scalar-table">
             <tbody>
+              <tr><td>Thermal efficiency</td><td id="r-eta">—</td><td>%</td></tr>
               <tr><td>Mass flow rate</td><td id="r-mass-flow">—</td><td>kg/s</td></tr>
               <tr><td>Compressor power</td><td id="r-comp-power">—</td><td>MW</td></tr>
               <tr><td>Turbine power</td><td id="r-turb-power">—</td><td>MW</td></tr>
-              <tr><td>Net power</td><td id="r-net-power">—</td><td>MW</td></tr>
               <tr><td>Heat input</td><td id="r-heat-in">—</td><td>MW</td></tr>
               <tr><td>Heat rejection</td><td id="r-heat-rej">—</td><td>MW</td></tr>
-              <tr><td>Thermal efficiency</td><td id="r-eta">—</td><td>%</td></tr>
+              <tr><td>Recuperator heat transfer</td><td id="r-recup-q">—</td><td>MW</td></tr>
+              <tr><td>Recuperator min ΔT</td><td id="r-recup-min-dt">—</td><td>K</td></tr>
             </tbody>
           </table>
         </div>
