@@ -90,8 +90,8 @@ function renderStates(states) {
       <td>${i + 1}</td>
       <td>${STATE_LABELS[i]}</td>
       <td>${fmt(s.temperature_c, 1)}</td>
-      <td>${fmt(s.pressure_mpa, 4)}</td>
-      <td>${fmt(s.density_kg_per_m3, 3)}</td>
+      <td>${fmt(s.pressure_mpa, 2)}</td>
+      <td>${fmt(s.density_kg_per_m3, 1)}</td>
       <td>${fmt(s.enthalpy_kj_per_kg, 1)}</td>
       <td>${fmt(s.entropy_kj_per_kg_k, 4)}</td>
     `;
