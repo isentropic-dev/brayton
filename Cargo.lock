@@ -172,9 +172,9 @@ checksum = "ff0c319e9838813ab378aea2a73615e9c060dbe6bc0f35688006545185be2968"
 
 [[package]]
 name = "twine-models"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f75992e335ba2c042b62b6f3282705a3fc155860d17ef6314c92b748d366ed29"
+checksum = "df095cfe39f0a8048ec7c039295890370d1340e9c1a3550e52c039aceae9c352"
 dependencies = [
  "num-traits",
  "thiserror",

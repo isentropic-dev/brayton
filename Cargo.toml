@@ -11,7 +11,7 @@ default = []
 wasm = ["dep:wasm-bindgen", "dep:serde", "dep:serde-wasm-bindgen"]
 
 [dependencies]
-twine-models = "0.1"
+twine-models = "0.2"
 twine-core = "0.5"
 uom = "0.36"
 thiserror = "2.0.16"
