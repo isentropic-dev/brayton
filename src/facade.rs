@@ -118,6 +118,9 @@ pub struct DesignPointOutput {
     /// Minimum hot-to-cold temperature difference in the recuperator, in kelvin.
     pub recuperator_min_delta_t_k: f64,
 
+    /// Recuperator effectiveness (dimensionless, 0 to 1).
+    pub recuperator_effectiveness: f64,
+
     /// Thermodynamic states at the six cycle points.
     ///
     /// Index order:
@@ -277,6 +280,7 @@ where
         thermal_efficiency: solution.eta_thermal.get::<ratio>(),
         recuperator_heat_transfer_mw: solution.q_dot_recup.get::<megawatt>(),
         recuperator_min_delta_t_k: solution.recuperator_min_delta_t.get::<delta_kelvin>(),
+        recuperator_effectiveness: solution.recuperator_effectiveness.get(),
         states: points,
     }
 }
