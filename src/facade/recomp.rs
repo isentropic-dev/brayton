@@ -198,7 +198,11 @@ fn convert_input(
         net_power: Power::new::<megawatt>(input.net_power_mw),
     };
 
-    let recomp_frac = Ratio::new::<ratio>(input.recomp_frac);
+    let f = input.recomp_frac;
+    if !(0.0..1.0).contains(&f) {
+        return Err(format!("invalid recomp_frac: {f} (must be in [0, 1))"));
+    }
+    let recomp_frac = Ratio::new::<ratio>(f);
 
     let eta_mc = IsentropicEfficiency::new(input.mc_efficiency)
         .map_err(|e| format!("invalid mc_efficiency: {e}"))?;
