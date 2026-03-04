@@ -1,5 +1,6 @@
 pub mod facade;
-pub mod simple;
+mod recompression;
+mod simple;
 
 mod config;
 mod fluids;
