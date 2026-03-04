@@ -134,13 +134,23 @@ function callWasm(fn_name, input) {
 }
 
 /**
- * Run a design-point calculation.
+ * Run a simple cycle design-point calculation.
  * @param {Object} input — plain object matching DesignPointInput fields
  * @returns {Object} — DesignPointOutput fields
  * @throws {Error} on invalid input or solver failure
  */
 export function designPoint(input) {
   return callWasm('design_point', input);
+}
+
+/**
+ * Run a recompression cycle design-point calculation.
+ * @param {Object} input — plain object matching RecompDesignPointInput fields
+ * @returns {Object} — RecompDesignPointOutput fields
+ * @throws {Error} on invalid input or solver failure
+ */
+export function recompDesignPoint(input) {
+  return callWasm('recomp_design_point', input);
 }
 
 /**

@@ -13,9 +13,13 @@ body {
 }
 
 header {
-  padding: 1.5rem 2rem 1rem;
+  padding: 1.5rem 2rem 0;
   background: #fff;
   border-bottom: 1px solid #ddd;
+}
+
+.header-top {
+  margin-bottom: 0.75rem;
 }
 
 header h1 {
@@ -23,21 +27,37 @@ header h1 {
   font-weight: 600;
 }
 
-.subtitle {
-  color: #666;
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
+.header-note {
+  color: #888;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 0.5ch;
+  gap: 0;
 }
 
-.subtitle span {
-  white-space: nowrap;
+.tab {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  background: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
 }
 
-.subtitle span + span::before {
-  content: '· ';
+.tab:hover {
+  color: #333;
+}
+
+.tab.active {
+  color: #1a1a1a;
+  border-bottom-color: #2563eb;
 }
 
 main {
@@ -46,6 +66,10 @@ main {
   gap: 1px;
   background: #ddd;
   min-height: calc(100vh - 80px);
+}
+
+main[hidden] {
+  display: none;
 }
 
 .inputs, .results {
@@ -116,7 +140,7 @@ select {
 
 /* Results */
 
-.scalars, .states, .charts {
+.scalars, .states, .charts, .recup-profile {
   margin-bottom: 1.5rem;
 }
 
@@ -132,7 +156,7 @@ table {
   font-size: 0.85rem;
 }
 
-#state-table {
+#s-state-table, #r-state-table {
   width: max(100%, 600px);
 }
 
@@ -149,28 +173,42 @@ th {
   background: #fafafa;
 }
 
-#scalar-table {
+#s-scalar-table, .scalar-table {
   width: 50%;
 }
 
-#scalar-table td:nth-child(2) {
+#s-scalar-table td:nth-child(2),
+.scalar-table td:nth-child(2) {
   font-family: "SF Mono", "Fira Code", monospace;
   text-align: right;
 }
 
-#scalar-table td:nth-child(3) {
+#s-scalar-table td:nth-child(3),
+.scalar-table td:nth-child(3) {
   color: #888;
   font-size: 0.8rem;
   width: 60px;
 }
 
-#state-table td {
+.sub-header {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-top: 0.75rem !important;
+}
+
+#s-state-table td,
+#r-state-table td {
   font-family: "SF Mono", "Fira Code", monospace;
   text-align: right;
 }
 
-#state-table td:first-child,
-#state-table td:nth-child(2) {
+#s-state-table td:first-child,
+#s-state-table td:nth-child(2),
+#r-state-table td:first-child,
+#r-state-table td:nth-child(2) {
   font-family: inherit;
   text-align: left;
 }
@@ -207,6 +245,10 @@ th {
   main {
     display: block;
     background: #fff;
+  }
+
+  main[hidden] {
+    display: none;
   }
 
   .inputs {

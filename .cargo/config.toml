@@ -1,7 +1,7 @@
 [target.wasm32-unknown-emscripten]
 runner = "node"
 rustflags = [
-    "-Clink-arg=-sEXPORTED_FUNCTIONS=['_design_point','_free_result','_states_from_ph','_states_from_ps','_free']",
+    "-Clink-arg=-sEXPORTED_FUNCTIONS=['_design_point','_recomp_design_point','_free_result','_states_from_ph','_states_from_ps','_free']",
     "-Clink-arg=-sALLOW_MEMORY_GROWTH=1",
     "-Clink-arg=--no-entry",
 ]
