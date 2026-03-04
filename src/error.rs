@@ -2,7 +2,7 @@ use std::error::Error as StdError;
 
 use thiserror::Error;
 use twine_models::{
-    models::thermal::hx::discretized::RecuperatorError,
+    models::thermal::hx::discretized::RecuperatorGivenUaError,
     support::{
         turbomachinery::{compressor::CompressionError, turbine::ExpansionError},
         units::SpecificEnthalpy,
@@ -18,7 +18,7 @@ pub enum Error<Fluid> {
     Turbine(#[from] ExpansionError<Fluid>),
 
     #[error("recuperator: {0}")]
-    Recuperator(#[from] RecuperatorError),
+    Recuperator(#[from] RecuperatorGivenUaError),
 
     #[error("net power must be positive")]
     NonPositiveNetPower,
