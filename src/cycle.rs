@@ -1,7 +1,8 @@
 use twine_core::Model;
 use twine_models::{
     models::thermal::hx::discretized::{
-        Inlets, MassFlows, PressureDrops, Recuperator, RecuperatorConfig, RecuperatorInput,
+        Inlets, MassFlows, PressureDrops, RecuperatorGivenUa, RecuperatorGivenUaConfig,
+        RecuperatorGivenUaInput,
     },
     support::{
         thermo::capability::{HasEnthalpy, HasEntropy, HasPressure, StateFrom, ThermoModel},
@@ -93,13 +94,13 @@ where
     let m_dot = operating_point.net_power / w_net;
 
     // Solve recuperator with given UA to define states 3 and 6.
-    let recuperator = Recuperator::new(
+    let recuperator = RecuperatorGivenUa::new(
         thermo,
         config.hx.recuperator.segments,
-        RecuperatorConfig::default(),
+        RecuperatorGivenUaConfig::default(),
     )
     .map_err(Error::Recuperator)?;
-    let recup_result = recuperator.call(&RecuperatorInput {
+    let recup_result = recuperator.call(&RecuperatorGivenUaInput {
         inlets: Inlets {
             top: s2.clone(),
             bottom: s5.clone(),

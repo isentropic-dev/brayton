@@ -176,15 +176,15 @@ dependencies = [
 
 [[package]]
 name = "twine-core"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff0c319e9838813ab378aea2a73615e9c060dbe6bc0f35688006545185be2968"
+checksum = "39b208bb973f853140976c2df20b0322f375e2f5d09aa66f52e41980ab827118"
 
 [[package]]
 name = "twine-models"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a40bbdb0c3b9db5d09146a48a96cad91f4913bd1ee83091cd63b7c4c0c29dcf"
+checksum = "eb54440e2100d54656611d4db69b553d5334720e282a34f5614a5d7deda43f80"
 dependencies = [
  "cmake",
  "num-traits",
@@ -196,9 +196,9 @@ dependencies = [
 
 [[package]]
 name = "twine-solvers"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f41c85bf9289cb42b0bd37c8106eaa8e244e44801122c422391658fb5dbad3f7"
+checksum = "98181a5a31f962091cbcab462ae395430a862c7192ab45721414b8a976c8e9b2"
 dependencies = [
  "thiserror",
  "twine-core",
