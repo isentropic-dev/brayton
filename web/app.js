@@ -84,6 +84,7 @@ function renderScalars(r) {
   document.getElementById('r-heat-rej').textContent = fmt(r.heat_rejection_mw, 2);
   document.getElementById('r-recup-q').textContent = fmt(r.recuperator_heat_transfer_mw, 2);
   document.getElementById('r-recup-min-dt').textContent = fmt(r.recuperator_min_delta_t_k, 1);
+  document.getElementById('r-recup-effectiveness').textContent = fmt(r.recuperator_effectiveness, 3);
 }
 
 function renderStates(states) {
