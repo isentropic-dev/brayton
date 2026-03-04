@@ -567,7 +567,13 @@ function onRecompInput() {
 
 // ── Initialization ──────────────────────────────────────────────────────────
 
+function nextFrame() {
+  return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
+
 async function main() {
+  const overlay = document.getElementById('loading-overlay');
+
   await init();
 
   // Tab buttons.
@@ -601,11 +607,16 @@ async function main() {
   rFluidEl.addEventListener('change', onRecompInput);
   populateFluidSelect(rFluidEl, rModelEl.value);
 
+  // Yield so the loading overlay renders before the first (slow) calculations.
+  await nextFrame();
+
   // Calculate both tabs on load so switching is instant.
   simpleNeedsCalc = false;
   recompNeedsCalc = false;
   calculateSimple();
   calculateRecomp();
+
+  overlay.hidden = true;
 }
 
 main().catch(e => {
