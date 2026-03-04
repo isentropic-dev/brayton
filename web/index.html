@@ -35,7 +35,12 @@
           </select>
         </label>
         <label>Working fluid
-          <select id="s-fluid"></select>
+          <select id="s-fluid">
+            <option value="CarbonDioxide" selected>Carbon Dioxide</option>
+            <option value="Nitrogen">Nitrogen</option>
+            <option value="Helium">Helium</option>
+            <option value="Butane">Butane</option>
+          </select>
         </label>
       </fieldset>
 
@@ -71,7 +76,7 @@
       <fieldset>
         <legend>Recuperator</legend>
         <label>UA (kW/K)
-          <input type="number" id="s-recuperator_ua_kw_per_k" value="2000" step="100">
+          <input type="number" id="s-recuperator_ua_kw_per_k" value="1000" step="100">
         </label>
         <label>Segments
           <select id="s-recuperator_segments">
@@ -175,7 +180,12 @@
           </select>
         </label>
         <label>Working fluid
-          <select id="r-fluid"></select>
+          <select id="r-fluid">
+            <option value="CarbonDioxide" selected>Carbon Dioxide</option>
+            <option value="Nitrogen">Nitrogen</option>
+            <option value="Helium">Helium</option>
+            <option value="Butane">Butane</option>
+          </select>
         </label>
       </fieldset>
 
@@ -191,7 +201,7 @@
           <input type="number" id="r-turbine_inlet_temp_c" value="550" step="1">
         </label>
         <label>Compressor inlet pressure (MPa)
-          <input type="number" id="r-compressor_inlet_pressure_mpa" value="7.7" step="0.1">
+          <input type="number" id="r-compressor_inlet_pressure_mpa" value="8" step="0.1">
         </label>
         <label>Compressor outlet pressure (MPa)
           <input type="number" id="r-compressor_outlet_pressure_mpa" value="20" step="0.1">
@@ -217,7 +227,7 @@
       <fieldset>
         <legend>LT Recuperator</legend>
         <label>UA (kW/K)
-          <input type="number" id="r-lt_recuperator_ua_kw_per_k" value="5000" step="100">
+          <input type="number" id="r-lt_recuperator_ua_kw_per_k" value="500" step="100">
         </label>
         <label>Segments
           <select id="r-lt_recuperator_segments">
@@ -229,17 +239,17 @@
           </select>
         </label>
         <label>Cold-side ΔP (%)
-          <input type="number" id="r-lt_recuperator_dp_cold_pct" value="0" step="0.5" min="0" max="50">
+          <input type="number" id="r-lt_recuperator_dp_cold_pct" value="2" step="0.5" min="0" max="50">
         </label>
         <label>Hot-side ΔP (%)
-          <input type="number" id="r-lt_recuperator_dp_hot_pct" value="0" step="0.5" min="0" max="50">
+          <input type="number" id="r-lt_recuperator_dp_hot_pct" value="2" step="0.5" min="0" max="50">
         </label>
       </fieldset>
 
       <fieldset>
         <legend>HT Recuperator</legend>
         <label>UA (kW/K)
-          <input type="number" id="r-ht_recuperator_ua_kw_per_k" value="5000" step="100">
+          <input type="number" id="r-ht_recuperator_ua_kw_per_k" value="500" step="100">
         </label>
         <label>Segments
           <select id="r-ht_recuperator_segments">
@@ -251,20 +261,20 @@
           </select>
         </label>
         <label>Cold-side ΔP (%)
-          <input type="number" id="r-ht_recuperator_dp_cold_pct" value="0" step="0.5" min="0" max="50">
+          <input type="number" id="r-ht_recuperator_dp_cold_pct" value="2" step="0.5" min="0" max="50">
         </label>
         <label>Hot-side ΔP (%)
-          <input type="number" id="r-ht_recuperator_dp_hot_pct" value="0" step="0.5" min="0" max="50">
+          <input type="number" id="r-ht_recuperator_dp_hot_pct" value="2" step="0.5" min="0" max="50">
         </label>
       </fieldset>
 
       <fieldset>
         <legend>Pressure Drops</legend>
         <label>Precooler ΔP (%)
-          <input type="number" id="r-precooler_dp_pct" value="0" step="0.5" min="0" max="50">
+          <input type="number" id="r-precooler_dp_pct" value="1" step="0.5" min="0" max="50">
         </label>
         <label>Primary HX ΔP (%)
-          <input type="number" id="r-primary_hx_dp_pct" value="0" step="0.5" min="0" max="50">
+          <input type="number" id="r-primary_hx_dp_pct" value="1" step="0.5" min="0" max="50">
         </label>
       </fieldset>
     </section>
