@@ -10,7 +10,7 @@
 
 const CHART_WIDTH = 740;
 const CHART_HEIGHT = 280;
-const PADDING = { top: 40, right: 30, bottom: 50, left: 65 };
+const PADDING = { top: 20, right: 30, bottom: 50, left: 65 };
 const COLORS = {
   hot: '#dc2626',
   cold: '#2563eb',
@@ -107,12 +107,6 @@ export function createRecupChart(container) {
     ctx.strokeStyle = COLORS.cold;
     ctx.lineWidth = 2;
     ctx.stroke();
-
-    // Title.
-    ctx.fillStyle = COLORS.title;
-    ctx.font = 'bold 13px -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Recuperator Temperature Profile', w / 2, 20);
 
     // Axis labels.
     ctx.fillStyle = COLORS.axis;

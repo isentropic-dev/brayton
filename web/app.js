@@ -1,115 +1,15 @@
-import { init, designPoint, statesFromPh, statesFromPs } from './brayton.js';
+import { init, designPoint, recompDesignPoint, statesFromPh, statesFromPs } from './brayton.js';
 import { createCycleChart } from './cycle-chart.js';
 import { createRecupChart } from './recup-chart.js';
 
-const STATE_LABELS = [
-  'Compressor in',
-  'Compressor out',
-  'Recup cold out',
-  'Turbine in',
-  'Turbine out',
-  'Recup hot out',
-];
-
-const INPUT_IDS = [
-  'compressor_inlet_temp_c',
-  'turbine_inlet_temp_c',
-  'compressor_inlet_pressure_mpa',
-  'compressor_outlet_pressure_mpa',
-  'net_power_mw',
-  'compressor_efficiency_pct',
-  'turbine_efficiency_pct',
-  'recuperator_ua_kw_per_k',
-  'recuperator_segments',
-  'recuperator_dp_cold_pct',
-  'recuperator_dp_hot_pct',
-  'precooler_dp_pct',
-  'primary_hx_dp_pct',
-];
-
-let tsChart = null;
-let hsChart = null;
-let pvChart = null;
-let phChart = null;
-let recupChart = null;
-
-// Fields where the UI shows percent but the facade expects a 0–1 fraction.
-// Fields where the UI shows percent but the facade expects a 0–1 value.
-const PCT_FIELDS = [
-  'compressor_efficiency_pct',
-  'turbine_efficiency_pct',
-  'recuperator_dp_cold_pct',
-  'recuperator_dp_hot_pct',
-  'precooler_dp_pct',
-  'primary_hx_dp_pct',
-];
-
-// Map from UI element IDs to facade field names (only where they differ).
-const FIELD_MAP = {
-  'compressor_efficiency_pct': 'compressor_efficiency',
-  'turbine_efficiency_pct': 'turbine_efficiency',
-  'recuperator_dp_cold_pct': 'recuperator_dp_cold_fraction',
-  'recuperator_dp_hot_pct': 'recuperator_dp_hot_fraction',
-  'precooler_dp_pct': 'precooler_dp_fraction',
-  'primary_hx_dp_pct': 'primary_hx_dp_fraction',
-};
-
-function readInputs() {
-  const obj = {};
-  obj.model = document.getElementById('model').value;
-  obj.fluid = document.getElementById('fluid').value;
-  for (const id of INPUT_IDS) {
-    const el = document.getElementById(id);
-    const val = id === 'recuperator_segments'
-      ? parseInt(el.value, 10)
-      : parseFloat(el.value);
-    if (isNaN(val)) return null;
-
-    const key = FIELD_MAP[id] || id;
-    obj[key] = PCT_FIELDS.includes(id) ? val / 100 : val;
-  }
-  return obj;
-}
+// ── Shared utilities ────────────────────────────────────────────────────────
 
 function fmt(v, decimals = 2) {
   return v.toFixed(decimals);
 }
 
-function renderScalars(r) {
-  document.getElementById('r-eta').textContent = fmt(r.thermal_efficiency * 100, 2);
-  document.getElementById('r-mass-flow').textContent = fmt(r.mass_flow_kg_per_s, 1);
-  document.getElementById('r-comp-power').textContent = fmt(r.compressor_power_mw, 2);
-  document.getElementById('r-turb-power').textContent = fmt(r.turbine_power_mw, 2);
-  document.getElementById('r-heat-in').textContent = fmt(r.heat_input_mw, 2);
-  document.getElementById('r-heat-rej').textContent = fmt(r.heat_rejection_mw, 2);
-  document.getElementById('r-recup-q').textContent = fmt(r.recuperator_heat_transfer_mw, 2);
-  document.getElementById('r-recup-min-dt').textContent = fmt(r.recuperator_min_delta_t_k, 1);
-  document.getElementById('r-recup-effectiveness').textContent = fmt(r.recuperator_effectiveness, 3);
-}
-
-function renderStates(states) {
-  const tbody = document.getElementById('state-tbody');
-  tbody.innerHTML = '';
-  states.forEach((s, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${i + 1}</td>
-      <td>${STATE_LABELS[i]}</td>
-      <td>${fmt(s.temperature_c, 1)}</td>
-      <td>${fmt(s.pressure_mpa, 2)}</td>
-      <td>${fmt(s.density_kg_per_m3, 1)}</td>
-      <td>${fmt(s.enthalpy_kj_per_kg, 1)}</td>
-      <td>${fmt(s.entropy_kj_per_kg_k, 4)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
 const N_CURVE_POINTS = 30;
 
-/**
- * Linearly interpolate N values between a and b (inclusive of both endpoints).
- */
 function linspace(a, b, n) {
   const arr = new Array(n);
   for (let i = 0; i < n; i++) {
@@ -118,207 +18,12 @@ function linspace(a, b, n) {
   return arr;
 }
 
-/**
- * Build smooth curve points for all 6 process paths around the cycle.
- *
- * Returns an array of StatePoint objects (with `label` on the 6 state points)
- * ordered sequentially around the cycle: 1→2, 2→3, 3→4, 4→5, 5→6, 6→1.
- */
-function buildCurvePoints(states, model, fluid) {
-  const [s1, s2, s3, s4, s5, s6] = states;
-  const n = N_CURVE_POINTS;
-  const base = { model, fluid };
-
-  // Each segment: [from, to, method].
-  // "ph" segments use statesFromPh (isobaric-ish HXs, recuperator).
-  // "ps" segments use statesFromPs (turbomachinery).
-  const segments = [
-    { from: s1, to: s2, method: 'ps', label_from: '1' },
-    { from: s2, to: s3, method: 'ph', label_from: '2' },
-    { from: s3, to: s4, method: 'ph', label_from: '3' },
-    { from: s4, to: s5, method: 'ps', label_from: '4' },
-    { from: s5, to: s6, method: 'ph', label_from: '5' },
-    { from: s6, to: s1, method: 'ph', label_from: '6' },
-  ];
-
-  const allPoints = [];
-
-  for (const seg of segments) {
-    const pressures = linspace(seg.from.pressure_mpa, seg.to.pressure_mpa, n);
-
-    let curveStates;
-    if (seg.method === 'ph') {
-      const enthalpies = linspace(
-        seg.from.enthalpy_kj_per_kg,
-        seg.to.enthalpy_kj_per_kg,
-        n,
-      );
-      curveStates = statesFromPh({
-        ...base,
-        pressures_mpa: pressures,
-        enthalpies_kj_per_kg: enthalpies,
-      });
-    } else {
-      const entropies = linspace(
-        seg.from.entropy_kj_per_kg_k,
-        seg.to.entropy_kj_per_kg_k,
-        n,
-      );
-      curveStates = statesFromPs({
-        ...base,
-        pressures_mpa: pressures,
-        entropies_kj_per_kg_k: entropies,
-      });
-    }
-
-    // Label the first point of each segment; skip the last to avoid
-    // duplicates (the next segment's first point is the same state).
-    for (let i = 0; i < curveStates.length - 1; i++) {
-      const pt = curveStates[i];
-      if (i === 0) pt.label = seg.label_from;
-      allPoints.push(pt);
-    }
-  }
-
-  return allPoints;
-}
-
-/**
- * Extract chart-specific (x, y) pairs from curve points.
- */
 function toChartPoints(curvePoints, xKey, yKey) {
   return curvePoints.map(p => ({
     x: p[xKey],
     y: p[yKey],
     label: p.label,
   }));
-}
-
-function renderRecupProfile(states, model, fluid) {
-  const [, s2, s3, , s5, s6] = states;
-  const n = N_CURVE_POINTS;
-  const base = { model, fluid };
-
-  try {
-    // Cold side (s2→s3): left to right.
-    const coldStates = statesFromPh({
-      ...base,
-      pressures_mpa: linspace(s2.pressure_mpa, s3.pressure_mpa, n),
-      enthalpies_kj_per_kg: linspace(s2.enthalpy_kj_per_kg, s3.enthalpy_kj_per_kg, n),
-    });
-
-    // Hot side (s5→s6): counterflow, so hot inlet (s5) is at the cold
-    // outlet end (right). Reverse so position 0 = cold inlet end.
-    const hotStates = statesFromPh({
-      ...base,
-      pressures_mpa: linspace(s5.pressure_mpa, s6.pressure_mpa, n),
-      enthalpies_kj_per_kg: linspace(s5.enthalpy_kj_per_kg, s6.enthalpy_kj_per_kg, n),
-    }).reverse();
-
-    const coldTemps = coldStates.map(s => s.temperature_c);
-    const hotTemps = hotStates.map(s => s.temperature_c);
-
-    if (!recupChart) {
-      recupChart = createRecupChart(document.getElementById('chart-recup'));
-    }
-    recupChart.update(hotTemps, coldTemps);
-  } catch {
-    // Silently skip if profile generation fails.
-  }
-}
-
-function renderCharts(states, model, fluid) {
-  let curvePoints;
-  try {
-    curvePoints = buildCurvePoints(states, model, fluid);
-  } catch {
-    // Fall back to straight lines between state points if curve
-    // generation fails (e.g., thermo model can't evaluate a point).
-    curvePoints = states.map((s, i) => ({ ...s, label: String(i + 1) }));
-  }
-
-  const tsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'temperature_c');
-  const hsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
-  const pvPoints = curvePoints.map(p => ({
-    x: 1 / p.density_kg_per_m3,
-    y: p.pressure_mpa,
-    label: p.label,
-  }));
-  const phPoints = toChartPoints(curvePoints, 'enthalpy_kj_per_kg', 'pressure_mpa');
-
-  if (!tsChart) {
-    tsChart = createCycleChart(document.getElementById('chart-ts'), {
-      title: 'T–s',
-      xLabel: 's (kJ/kg·K)',
-      yLabel: 'T (°C)',
-    });
-  }
-  tsChart.update(tsPoints);
-
-  if (!hsChart) {
-    hsChart = createCycleChart(document.getElementById('chart-hs'), {
-      title: 'h–s',
-      xLabel: 's (kJ/kg·K)',
-      yLabel: 'h (kJ/kg)',
-    });
-  }
-  hsChart.update(hsPoints);
-
-  if (!pvChart) {
-    pvChart = createCycleChart(document.getElementById('chart-pv'), {
-      title: 'P–v',
-      xLabel: 'v (m³/kg)',
-      yLabel: 'P (MPa)',
-    });
-  }
-  pvChart.update(pvPoints);
-
-  if (!phChart) {
-    phChart = createCycleChart(document.getElementById('chart-ph'), {
-      title: 'P–h',
-      xLabel: 'h (kJ/kg)',
-      yLabel: 'P (MPa)',
-    });
-  }
-  phChart.update(phPoints);
-}
-
-function showError(msg) {
-  const el = document.getElementById('error');
-  el.textContent = msg;
-  el.hidden = false;
-  document.getElementById('results-content').style.opacity = '0.3';
-}
-
-function clearError() {
-  document.getElementById('error').hidden = true;
-  document.getElementById('results-content').style.opacity = '1';
-}
-
-function calculate() {
-  const input = readInputs();
-  if (!input) {
-    showError('Some inputs are empty or invalid.');
-    return;
-  }
-
-  try {
-    const result = designPoint(input);
-    clearError();
-    renderScalars(result);
-    renderStates(result.states);
-    renderRecupProfile(result.states, input.model, input.fluid);
-    renderCharts(result.states, input.model, input.fluid);
-  } catch (e) {
-    showError(e.message || String(e));
-  }
-}
-
-let debounceTimer = null;
-
-function onInputChange() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(calculate, 300);
 }
 
 const COOLPROP_FLUIDS = [
@@ -332,43 +37,581 @@ const PERFECT_GAS_FLUIDS = [
   { value: 'CarbonDioxide', label: 'Carbon Dioxide' },
 ];
 
-function onModelChange() {
-  const fluidSelect = document.getElementById('fluid');
-  const fluids = document.getElementById('model').value === 'CoolProp'
-    ? COOLPROP_FLUIDS
-    : PERFECT_GAS_FLUIDS;
-
-  const prev = fluidSelect.value;
-  fluidSelect.innerHTML = '';
+function populateFluidSelect(selectEl, model) {
+  const fluids = model === 'CoolProp' ? COOLPROP_FLUIDS : PERFECT_GAS_FLUIDS;
+  const prev = selectEl.value;
+  selectEl.innerHTML = '';
   for (const f of fluids) {
     const opt = document.createElement('option');
     opt.value = f.value;
     opt.textContent = f.label;
-    fluidSelect.appendChild(opt);
+    selectEl.appendChild(opt);
   }
-
-  // Keep the previous selection if it's still available, otherwise default.
   if (fluids.some(f => f.value === prev)) {
-    fluidSelect.value = prev;
+    selectEl.value = prev;
+  }
+}
+
+// ── Simple cycle ────────────────────────────────────────────────────────────
+
+const S_STATE_LABELS = [
+  'Compressor in',
+  'Compressor out',
+  'Recup cold out',
+  'Turbine in',
+  'Turbine out',
+  'Recup hot out',
+];
+
+const S_INPUT_IDS = [
+  's-compressor_inlet_temp_c',
+  's-turbine_inlet_temp_c',
+  's-compressor_inlet_pressure_mpa',
+  's-compressor_outlet_pressure_mpa',
+  's-net_power_mw',
+  's-compressor_efficiency_pct',
+  's-turbine_efficiency_pct',
+  's-recuperator_ua_kw_per_k',
+  's-recuperator_segments',
+  's-recuperator_dp_cold_pct',
+  's-recuperator_dp_hot_pct',
+  's-precooler_dp_pct',
+  's-primary_hx_dp_pct',
+];
+
+const S_PCT_FIELDS = [
+  's-compressor_efficiency_pct',
+  's-turbine_efficiency_pct',
+  's-recuperator_dp_cold_pct',
+  's-recuperator_dp_hot_pct',
+  's-precooler_dp_pct',
+  's-primary_hx_dp_pct',
+];
+
+// Map from UI IDs (with s- prefix) to facade field names.
+const S_FIELD_MAP = {
+  's-compressor_efficiency_pct': 'compressor_efficiency',
+  's-turbine_efficiency_pct': 'turbine_efficiency',
+  's-recuperator_dp_cold_pct': 'recuperator_dp_cold_fraction',
+  's-recuperator_dp_hot_pct': 'recuperator_dp_hot_fraction',
+  's-precooler_dp_pct': 'precooler_dp_fraction',
+  's-primary_hx_dp_pct': 'primary_hx_dp_fraction',
+};
+
+function readSimpleInputs() {
+  const obj = {};
+  obj.model = document.getElementById('s-model').value;
+  obj.fluid = document.getElementById('s-fluid').value;
+  for (const id of S_INPUT_IDS) {
+    const el = document.getElementById(id);
+    const val = id === 's-recuperator_segments'
+      ? parseInt(el.value, 10)
+      : parseFloat(el.value);
+    if (isNaN(val)) return null;
+    // Strip s- prefix, then check map.
+    const bare = id.replace(/^s-/, '');
+    const key = S_FIELD_MAP[id] || bare;
+    obj[key] = S_PCT_FIELDS.includes(id) ? val / 100 : val;
+  }
+  return obj;
+}
+
+let stsChart = null, shsChart = null, spvChart = null, sphChart = null, sRecupChart = null;
+
+function renderSimpleScalars(r) {
+  document.getElementById('s-r-eta').textContent = fmt(r.thermal_efficiency * 100, 2);
+  document.getElementById('s-r-mass-flow').textContent = fmt(r.mass_flow_kg_per_s, 1);
+  document.getElementById('s-r-comp-power').textContent = fmt(r.compressor_power_mw, 2);
+  document.getElementById('s-r-turb-power').textContent = fmt(r.turbine_power_mw, 2);
+  document.getElementById('s-r-heat-in').textContent = fmt(r.heat_input_mw, 2);
+  document.getElementById('s-r-heat-rej').textContent = fmt(r.heat_rejection_mw, 2);
+  document.getElementById('s-r-recup-q').textContent = fmt(r.recuperator_heat_transfer_mw, 2);
+  document.getElementById('s-r-recup-min-dt').textContent = fmt(r.recuperator_min_delta_t_k, 1);
+  document.getElementById('s-r-recup-effectiveness').textContent = fmt(r.recuperator_effectiveness, 3);
+}
+
+function renderSimpleStates(states) {
+  const tbody = document.getElementById('s-state-tbody');
+  tbody.innerHTML = '';
+  states.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${S_STATE_LABELS[i]}</td>
+      <td>${fmt(s.temperature_c, 1)}</td>
+      <td>${fmt(s.pressure_mpa, 2)}</td>
+      <td>${fmt(s.density_kg_per_m3, 1)}</td>
+      <td>${fmt(s.enthalpy_kj_per_kg, 1)}</td>
+      <td>${fmt(s.entropy_kj_per_kg_k, 4)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function buildSimpleCurvePoints(states, model, fluid) {
+  const [s1, s2, s3, s4, s5, s6] = states;
+  const n = N_CURVE_POINTS;
+  const base = { model, fluid };
+
+  const segments = [
+    { from: s1, to: s2, method: 'ps', label_from: '1' },
+    { from: s2, to: s3, method: 'ph', label_from: '2' },
+    { from: s3, to: s4, method: 'ph', label_from: '3' },
+    { from: s4, to: s5, method: 'ps', label_from: '4' },
+    { from: s5, to: s6, method: 'ph', label_from: '5' },
+    { from: s6, to: s1, method: 'ph', label_from: '6' },
+  ];
+
+  const allPoints = [];
+  for (const seg of segments) {
+    const pressures = linspace(seg.from.pressure_mpa, seg.to.pressure_mpa, n);
+    let curveStates;
+    if (seg.method === 'ph') {
+      curveStates = statesFromPh({
+        ...base,
+        pressures_mpa: pressures,
+        enthalpies_kj_per_kg: linspace(seg.from.enthalpy_kj_per_kg, seg.to.enthalpy_kj_per_kg, n),
+      });
+    } else {
+      curveStates = statesFromPs({
+        ...base,
+        pressures_mpa: pressures,
+        entropies_kj_per_kg_k: linspace(seg.from.entropy_kj_per_kg_k, seg.to.entropy_kj_per_kg_k, n),
+      });
+    }
+    for (let i = 0; i < curveStates.length - 1; i++) {
+      const pt = curveStates[i];
+      if (i === 0) pt.label = seg.label_from;
+      allPoints.push(pt);
+    }
+  }
+  return allPoints;
+}
+
+function renderSimpleRecupProfile(states, model, fluid) {
+  const [, s2, s3, , s5, s6] = states;
+  const n = N_CURVE_POINTS;
+  const base = { model, fluid };
+  try {
+    const coldStates = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s2.pressure_mpa, s3.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s2.enthalpy_kj_per_kg, s3.enthalpy_kj_per_kg, n),
+    });
+    const hotStates = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s5.pressure_mpa, s6.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s5.enthalpy_kj_per_kg, s6.enthalpy_kj_per_kg, n),
+    }).reverse();
+    if (!sRecupChart) {
+      sRecupChart = createRecupChart(document.getElementById('s-chart-recup'));
+    }
+    sRecupChart.update(hotStates.map(s => s.temperature_c), coldStates.map(s => s.temperature_c));
+  } catch { /* skip */ }
+}
+
+function renderSimpleCharts(states, model, fluid) {
+  let curvePoints;
+  try {
+    curvePoints = buildSimpleCurvePoints(states, model, fluid);
+  } catch {
+    curvePoints = states.map((s, i) => ({ ...s, label: String(i + 1) }));
   }
 
-  onInputChange();
+  const tsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'temperature_c');
+  const hsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
+  const pvPoints = curvePoints.map(p => ({ x: 1 / p.density_kg_per_m3, y: p.pressure_mpa, label: p.label }));
+  const phPoints = toChartPoints(curvePoints, 'enthalpy_kj_per_kg', 'pressure_mpa');
+
+  if (!stsChart) stsChart = createCycleChart(document.getElementById('s-chart-ts'), { title: 'T–s', xLabel: 's (kJ/kg·K)', yLabel: 'T (°C)' });
+  stsChart.update(tsPoints);
+  if (!shsChart) shsChart = createCycleChart(document.getElementById('s-chart-hs'), { title: 'h–s', xLabel: 's (kJ/kg·K)', yLabel: 'h (kJ/kg)' });
+  shsChart.update(hsPoints);
+  if (!spvChart) spvChart = createCycleChart(document.getElementById('s-chart-pv'), { title: 'P–v', xLabel: 'v (m³/kg)', yLabel: 'P (MPa)' });
+  spvChart.update(pvPoints);
+  if (!sphChart) sphChart = createCycleChart(document.getElementById('s-chart-ph'), { title: 'P–h', xLabel: 'h (kJ/kg)', yLabel: 'P (MPa)' });
+  sphChart.update(phPoints);
 }
+
+function showSimpleError(msg) {
+  document.getElementById('s-error').textContent = msg;
+  document.getElementById('s-error').hidden = false;
+  document.getElementById('s-results-content').style.opacity = '0.3';
+}
+
+function clearSimpleError() {
+  document.getElementById('s-error').hidden = true;
+  document.getElementById('s-results-content').style.opacity = '1';
+}
+
+function calculateSimple() {
+  const input = readSimpleInputs();
+  if (!input) { showSimpleError('Some inputs are empty or invalid.'); return; }
+  try {
+    const result = designPoint(input);
+    clearSimpleError();
+    renderSimpleScalars(result);
+    renderSimpleStates(result.states);
+    renderSimpleRecupProfile(result.states, input.model, input.fluid);
+    renderSimpleCharts(result.states, input.model, input.fluid);
+  } catch (e) {
+    showSimpleError(e.message || String(e));
+  }
+}
+
+// ── Recompression cycle ─────────────────────────────────────────────────────
+
+const R_STATE_LABELS = [
+  'Main compressor inlet',
+  'Main compressor outlet',
+  'Low temp recuperator cold outlet',
+  'Mixing valve outlet',
+  'High temp recuperator cold outlet',
+  'Turbine inlet',
+  'Turbine outlet',
+  'High temp recuperator hot outlet',
+  'Low temp recuperator hot outlet',
+  'Recompressor outlet',
+];
+
+const R_INPUT_IDS = [
+  'r-compressor_inlet_temp_c',
+  'r-turbine_inlet_temp_c',
+  'r-compressor_inlet_pressure_mpa',
+  'r-compressor_outlet_pressure_mpa',
+  'r-net_power_mw',
+  'r-recomp_frac',
+  'r-mc_efficiency_pct',
+  'r-rc_efficiency_pct',
+  'r-turbine_efficiency_pct',
+  'r-lt_recuperator_ua_kw_per_k',
+  'r-lt_recuperator_segments',
+  'r-lt_recuperator_dp_cold_pct',
+  'r-lt_recuperator_dp_hot_pct',
+  'r-ht_recuperator_ua_kw_per_k',
+  'r-ht_recuperator_segments',
+  'r-ht_recuperator_dp_cold_pct',
+  'r-ht_recuperator_dp_hot_pct',
+  'r-precooler_dp_pct',
+  'r-primary_hx_dp_pct',
+];
+
+const R_PCT_FIELDS = [
+  'r-mc_efficiency_pct',
+  'r-rc_efficiency_pct',
+  'r-turbine_efficiency_pct',
+  'r-lt_recuperator_dp_cold_pct',
+  'r-lt_recuperator_dp_hot_pct',
+  'r-ht_recuperator_dp_cold_pct',
+  'r-ht_recuperator_dp_hot_pct',
+  'r-precooler_dp_pct',
+  'r-primary_hx_dp_pct',
+];
+
+const R_FIELD_MAP = {
+  'r-mc_efficiency_pct': 'mc_efficiency',
+  'r-rc_efficiency_pct': 'rc_efficiency',
+  'r-turbine_efficiency_pct': 'turbine_efficiency',
+  'r-lt_recuperator_dp_cold_pct': 'lt_recuperator_dp_cold_fraction',
+  'r-lt_recuperator_dp_hot_pct': 'lt_recuperator_dp_hot_fraction',
+  'r-ht_recuperator_dp_cold_pct': 'ht_recuperator_dp_cold_fraction',
+  'r-ht_recuperator_dp_hot_pct': 'ht_recuperator_dp_hot_fraction',
+  'r-precooler_dp_pct': 'precooler_dp_fraction',
+  'r-primary_hx_dp_pct': 'primary_hx_dp_fraction',
+};
+
+const R_SEGMENT_FIELDS = [
+  'r-lt_recuperator_segments',
+  'r-ht_recuperator_segments',
+];
+
+function readRecompInputs() {
+  const obj = {};
+  obj.model = document.getElementById('r-model').value;
+  obj.fluid = document.getElementById('r-fluid').value;
+  for (const id of R_INPUT_IDS) {
+    const el = document.getElementById(id);
+    const val = R_SEGMENT_FIELDS.includes(id)
+      ? parseInt(el.value, 10)
+      : parseFloat(el.value);
+    if (isNaN(val)) return null;
+    const bare = id.replace(/^r-/, '');
+    const key = R_FIELD_MAP[id] || bare;
+    obj[key] = R_PCT_FIELDS.includes(id) ? val / 100 : val;
+  }
+  return obj;
+}
+
+let rtsChart = null, rhsChart = null, rpvChart = null, rphChart = null;
+let rLtRecupChart = null, rHtRecupChart = null;
+
+function renderRecompScalars(r) {
+  document.getElementById('r-r-eta').textContent = fmt(r.thermal_efficiency * 100, 2);
+  document.getElementById('r-r-mass-flow-total').textContent = fmt(r.mass_flow_total_kg_per_s, 1);
+  document.getElementById('r-r-mass-flow-mc').textContent = fmt(r.mass_flow_mc_kg_per_s, 1);
+  document.getElementById('r-r-mass-flow-rc').textContent = fmt(r.mass_flow_rc_kg_per_s, 1);
+  document.getElementById('r-r-mc-power').textContent = fmt(r.mc_power_mw, 2);
+  document.getElementById('r-r-rc-power').textContent = fmt(r.rc_power_mw, 2);
+  document.getElementById('r-r-turb-power').textContent = fmt(r.turbine_power_mw, 2);
+  document.getElementById('r-r-heat-in').textContent = fmt(r.heat_input_mw, 2);
+  document.getElementById('r-r-heat-rej').textContent = fmt(r.heat_rejection_mw, 2);
+  document.getElementById('r-r-lt-q').textContent = fmt(r.lt_recuperator_heat_transfer_mw, 2);
+  document.getElementById('r-r-lt-min-dt').textContent = fmt(r.lt_recuperator_min_delta_t_k, 1);
+  document.getElementById('r-r-lt-effectiveness').textContent = fmt(r.lt_recuperator_effectiveness, 3);
+  document.getElementById('r-r-ht-q').textContent = fmt(r.ht_recuperator_heat_transfer_mw, 2);
+  document.getElementById('r-r-ht-min-dt').textContent = fmt(r.ht_recuperator_min_delta_t_k, 1);
+  document.getElementById('r-r-ht-effectiveness').textContent = fmt(r.ht_recuperator_effectiveness, 3);
+}
+
+function renderRecompStates(states) {
+  const tbody = document.getElementById('r-state-tbody');
+  tbody.innerHTML = '';
+  states.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${R_STATE_LABELS[i]}</td>
+      <td>${fmt(s.temperature_c, 1)}</td>
+      <td>${fmt(s.pressure_mpa, 2)}</td>
+      <td>${fmt(s.density_kg_per_m3, 1)}</td>
+      <td>${fmt(s.enthalpy_kj_per_kg, 1)}</td>
+      <td>${fmt(s.entropy_kj_per_kg_k, 4)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderRecompRecupProfiles(states, model, fluid) {
+  const n = N_CURVE_POINTS;
+  const base = { model, fluid };
+  // States: s1..s10 (indices 0..9).
+  const [, s2, s3, , s5, , s7, s8, s9] = states;
+
+  // LT recuperator: cold = s2→s3, hot = s8→s9.
+  // Counterflow: hot inlet (s8) at cold outlet end. Reverse hot for position alignment.
+  try {
+    const ltCold = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s2.pressure_mpa, s3.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s2.enthalpy_kj_per_kg, s3.enthalpy_kj_per_kg, n),
+    });
+    const ltHot = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s8.pressure_mpa, s9.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s8.enthalpy_kj_per_kg, s9.enthalpy_kj_per_kg, n),
+    }).reverse();
+    if (!rLtRecupChart) {
+      rLtRecupChart = createRecupChart(document.getElementById('r-chart-lt-recup'));
+    }
+    rLtRecupChart.update(ltHot.map(s => s.temperature_c), ltCold.map(s => s.temperature_c));
+  } catch { /* skip */ }
+
+  // HT recuperator: cold = s4→s5 (index 3→4), hot = s7→s8 (index 6→7).
+  // Use s5 for cold out (index 4) since s4 is the mixing valve outlet.
+  const s4 = states[3];
+  try {
+    const htCold = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s4.pressure_mpa, s5.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s4.enthalpy_kj_per_kg, s5.enthalpy_kj_per_kg, n),
+    });
+    const htHot = statesFromPh({
+      ...base,
+      pressures_mpa: linspace(s7.pressure_mpa, s8.pressure_mpa, n),
+      enthalpies_kj_per_kg: linspace(s7.enthalpy_kj_per_kg, s8.enthalpy_kj_per_kg, n),
+    }).reverse();
+    if (!rHtRecupChart) {
+      rHtRecupChart = createRecupChart(document.getElementById('r-chart-ht-recup'));
+    }
+    rHtRecupChart.update(htHot.map(s => s.temperature_c), htCold.map(s => s.temperature_c));
+  } catch { /* skip */ }
+}
+
+function buildRecompCurvePoints(states, model, fluid) {
+  const [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] = states;
+  const n = N_CURVE_POINTS;
+  const base = { model, fluid };
+
+  // The recompression cycle has two paths that merge/split.
+  // For the T-s / h-s diagrams, trace the main flow path:
+  // 1→2→3→4→5→6→7→8→9→1 (skip 10, it's the recomp branch).
+  const segments = [
+    { from: s1, to: s2, method: 'ps', label_from: '1' },
+    { from: s2, to: s3, method: 'ph', label_from: '2' },
+    { from: s3, to: s4, method: 'ph', label_from: '3' },
+    { from: s4, to: s5, method: 'ph', label_from: '4' },
+    { from: s5, to: s6, method: 'ph', label_from: '5' },
+    { from: s6, to: s7, method: 'ps', label_from: '6' },
+    { from: s7, to: s8, method: 'ph', label_from: '7' },
+    { from: s8, to: s9, method: 'ph', label_from: '8' },
+    { from: s9, to: s1, method: 'ph', label_from: '9' },
+  ];
+
+  const allPoints = [];
+  for (const seg of segments) {
+    const pressures = linspace(seg.from.pressure_mpa, seg.to.pressure_mpa, n);
+    let curveStates;
+    if (seg.method === 'ph') {
+      curveStates = statesFromPh({
+        ...base,
+        pressures_mpa: pressures,
+        enthalpies_kj_per_kg: linspace(seg.from.enthalpy_kj_per_kg, seg.to.enthalpy_kj_per_kg, n),
+      });
+    } else {
+      curveStates = statesFromPs({
+        ...base,
+        pressures_mpa: pressures,
+        entropies_kj_per_kg_k: linspace(seg.from.entropy_kj_per_kg_k, seg.to.entropy_kj_per_kg_k, n),
+      });
+    }
+    for (let i = 0; i < curveStates.length - 1; i++) {
+      const pt = curveStates[i];
+      if (i === 0) pt.label = seg.label_from;
+      allPoints.push(pt);
+    }
+  }
+  return allPoints;
+}
+
+function renderRecompCharts(states, model, fluid) {
+  let curvePoints;
+  try {
+    curvePoints = buildRecompCurvePoints(states, model, fluid);
+  } catch {
+    // Fallback: straight lines between main-path state points.
+    const mainPath = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    curvePoints = mainPath.map(i => ({ ...states[i], label: String(i + 1) }));
+  }
+
+  const tsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'temperature_c');
+  const hsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
+  const pvPoints = curvePoints.map(p => ({ x: 1 / p.density_kg_per_m3, y: p.pressure_mpa, label: p.label }));
+  const phPoints = toChartPoints(curvePoints, 'enthalpy_kj_per_kg', 'pressure_mpa');
+
+  if (!rtsChart) rtsChart = createCycleChart(document.getElementById('r-chart-ts'), { title: 'T–s', xLabel: 's (kJ/kg·K)', yLabel: 'T (°C)' });
+  rtsChart.update(tsPoints);
+  if (!rhsChart) rhsChart = createCycleChart(document.getElementById('r-chart-hs'), { title: 'h–s', xLabel: 's (kJ/kg·K)', yLabel: 'h (kJ/kg)' });
+  rhsChart.update(hsPoints);
+  if (!rpvChart) rpvChart = createCycleChart(document.getElementById('r-chart-pv'), { title: 'P–v', xLabel: 'v (m³/kg)', yLabel: 'P (MPa)' });
+  rpvChart.update(pvPoints);
+  if (!rphChart) rphChart = createCycleChart(document.getElementById('r-chart-ph'), { title: 'P–h', xLabel: 'h (kJ/kg)', yLabel: 'P (MPa)' });
+  rphChart.update(phPoints);
+}
+
+function showRecompError(msg) {
+  document.getElementById('r-error').textContent = msg;
+  document.getElementById('r-error').hidden = false;
+  document.getElementById('r-results-content').style.opacity = '0.3';
+}
+
+function clearRecompError() {
+  document.getElementById('r-error').hidden = true;
+  document.getElementById('r-results-content').style.opacity = '1';
+}
+
+function calculateRecomp() {
+  const input = readRecompInputs();
+  if (!input) { showRecompError('Some inputs are empty or invalid.'); return; }
+  try {
+    const result = recompDesignPoint(input);
+    clearRecompError();
+    renderRecompScalars(result);
+    renderRecompStates(result.states);
+    renderRecompRecupProfiles(result.states, input.model, input.fluid);
+    renderRecompCharts(result.states, input.model, input.fluid);
+  } catch (e) {
+    showRecompError(e.message || String(e));
+  }
+}
+
+// ── Tab switching ───────────────────────────────────────────────────────────
+
+let activeCycle = 'simple';
+let simpleNeedsCalc = true;
+let recompNeedsCalc = true;
+
+function switchCycle(cycle) {
+  if (cycle === activeCycle) return;
+  activeCycle = cycle;
+
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.cycle === cycle);
+  });
+  document.getElementById('simple-cycle').hidden = (cycle !== 'simple');
+  document.getElementById('recompression-cycle').hidden = (cycle !== 'recompression');
+
+  // Calculate on first switch if needed.
+  if (cycle === 'simple' && simpleNeedsCalc) {
+    simpleNeedsCalc = false;
+    calculateSimple();
+  } else if (cycle === 'recompression' && recompNeedsCalc) {
+    recompNeedsCalc = false;
+    calculateRecomp();
+  }
+}
+
+// ── Debounced input handling ────────────────────────────────────────────────
+
+let sDebounce = null;
+let rDebounce = null;
+
+function onSimpleInput() {
+  clearTimeout(sDebounce);
+  sDebounce = setTimeout(calculateSimple, 300);
+}
+
+function onRecompInput() {
+  clearTimeout(rDebounce);
+  rDebounce = setTimeout(calculateRecomp, 300);
+}
+
+// ── Initialization ──────────────────────────────────────────────────────────
 
 async function main() {
   await init();
 
-  for (const id of INPUT_IDS) {
-    const el = document.getElementById(id);
-    el.addEventListener('input', onInputChange);
-  }
-  document.getElementById('model').addEventListener('change', onModelChange);
-  document.getElementById('fluid').addEventListener('change', onInputChange);
+  // Tab buttons.
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => switchCycle(t.dataset.cycle));
+  });
 
-  // Populate fluid dropdown for the initial model selection, then calculate.
-  onModelChange();
+  // Simple cycle inputs.
+  for (const id of S_INPUT_IDS) {
+    document.getElementById(id).addEventListener('input', onSimpleInput);
+  }
+  const sModelEl = document.getElementById('s-model');
+  const sFluidEl = document.getElementById('s-fluid');
+  sModelEl.addEventListener('change', () => {
+    populateFluidSelect(sFluidEl, sModelEl.value);
+    onSimpleInput();
+  });
+  sFluidEl.addEventListener('change', onSimpleInput);
+  populateFluidSelect(sFluidEl, sModelEl.value);
+
+  // Recompression cycle inputs.
+  for (const id of R_INPUT_IDS) {
+    document.getElementById(id).addEventListener('input', onRecompInput);
+  }
+  const rModelEl = document.getElementById('r-model');
+  const rFluidEl = document.getElementById('r-fluid');
+  rModelEl.addEventListener('change', () => {
+    populateFluidSelect(rFluidEl, rModelEl.value);
+    onRecompInput();
+  });
+  rFluidEl.addEventListener('change', onRecompInput);
+  populateFluidSelect(rFluidEl, rModelEl.value);
+
+  // Calculate both tabs on load so switching is instant.
+  simpleNeedsCalc = false;
+  recompNeedsCalc = false;
+  calculateSimple();
+  calculateRecomp();
 }
 
 main().catch(e => {
-  showError('Failed to initialize WASM: ' + (e.message || e));
+  const el = document.getElementById('s-error') || document.getElementById('r-error');
+  if (el) {
+    el.textContent = 'Failed to initialize WASM: ' + (e.message || e);
+    el.hidden = false;
+  }
 });

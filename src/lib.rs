@@ -11,5 +11,9 @@ pub(crate) mod thermo;
 mod emscripten;
 
 pub use config::{InvalidPressureDrop, IsentropicEfficiency, PressureDrop, RecuperatorConfig};
-pub use facade::{DesignPointInput, DesignPointOutput, StatePoint};
+pub use facade::{
+    StatePoint,
+    recomp::{RecompDesignPointInput, RecompDesignPointOutput},
+    simple::{DesignPointInput, DesignPointOutput},
+};
 pub use operating_point::OperatingPoint;

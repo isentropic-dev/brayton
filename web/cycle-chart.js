@@ -129,8 +129,12 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
     ctx.stroke();
 
     // Points and labels (only for labeled state points).
-    for (const p of points) {
-      if (!p.label) continue;
+    // Collect labeled points first to compute centroid for offset direction.
+    const labeled = points.filter(p => p.label);
+    const centX = labeled.reduce((s, p) => s + toCanvasX(p.x), 0) / labeled.length;
+    const centY = labeled.reduce((s, p) => s + toCanvasY(p.y), 0) / labeled.length;
+
+    for (const p of labeled) {
       const cx = toCanvasX(p.x);
       const cy = toCanvasY(p.y);
 
@@ -139,11 +143,20 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
       ctx.fillStyle = COLORS.point;
       ctx.fill();
 
+      // Push label away from the centroid so it doesn't overlap the cycle.
+      let dx = cx - centX;
+      let dy = cy - centY;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      dx = dx / len * 14;
+      dy = dy / len * 14;
+
       ctx.fillStyle = COLORS.label;
       ctx.font = 'bold 11px -apple-system, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(p.label, cx + 7, cy - 7);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.label, cx + dx, cy + dy);
     }
+    ctx.textBaseline = 'alphabetic';
 
     // Title.
     ctx.fillStyle = COLORS.title;

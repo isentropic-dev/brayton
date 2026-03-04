@@ -9,12 +9,15 @@ use std::{
     os::raw::c_char,
 };
 
-use crate::{facade, thermo};
+use crate::{
+    facade::{recomp, simple},
+    thermo,
+};
 
 /// Run a design-point calculation from a JSON input string.
 ///
 /// Returns a heap-allocated JSON string.
-/// On success, the JSON matches [`facade::DesignPointOutput`].
+/// On success, the JSON matches [`simple::DesignPointOutput`].
 /// On failure, returns `{"error": "..."}`.
 /// The caller must free the returned pointer with [`free_result`].
 #[unsafe(no_mangle)]
@@ -23,12 +26,41 @@ pub extern "C" fn design_point(input_json: *const c_char) -> *const c_char {
         let c_str = unsafe { CStr::from_ptr(input_json) };
         let json_str = c_str.to_str().unwrap_or("");
 
-        let input: facade::DesignPointInput = match serde_json::from_str(json_str) {
+        let input: simple::DesignPointInput = match serde_json::from_str(json_str) {
             Ok(v) => v,
             Err(e) => return error_json(&format!("invalid input: {e}")),
         };
 
-        match facade::design_point(&input) {
+        match simple::design_point(&input) {
+            Ok(output) => match serde_json::to_string(&output) {
+                Ok(json) => CString::new(json).unwrap().into_raw(),
+                Err(e) => error_json(&format!("serialization failed: {e}")),
+            },
+            Err(e) => error_json(&e),
+        }
+    });
+
+    match result {
+        Ok(ptr) => ptr,
+        Err(_) => error_json("internal panic"),
+    }
+}
+
+/// Run a recompression Brayton cycle design-point calculation from JSON.
+///
+/// Same contract as [`design_point`]: returns JSON, caller frees with [`free_result`].
+#[unsafe(no_mangle)]
+pub extern "C" fn recomp_design_point(input_json: *const c_char) -> *const c_char {
+    let result = std::panic::catch_unwind(|| {
+        let c_str = unsafe { CStr::from_ptr(input_json) };
+        let json_str = c_str.to_str().unwrap_or("");
+
+        let input: recomp::RecompDesignPointInput = match serde_json::from_str(json_str) {
+            Ok(v) => v,
+            Err(e) => return error_json(&format!("invalid input: {e}")),
+        };
+
+        match recomp::recomp_design_point(&input) {
             Ok(output) => match serde_json::to_string(&output) {
                 Ok(json) => CString::new(json).unwrap().into_raw(),
                 Err(e) => error_json(&format!("serialization failed: {e}")),
@@ -46,7 +78,7 @@ pub extern "C" fn design_point(input_json: *const c_char) -> *const c_char {
 /// Compute thermodynamic states from arrays of pressure and enthalpy.
 ///
 /// Returns a heap-allocated JSON string.
-/// On success, the JSON is an array of [`facade::StatePoint`] objects.
+/// On success, the JSON is an array of [`crate::facade::StatePoint`] objects.
 /// On failure, returns `{"error": "..."}`.
 /// The caller must free the returned pointer with [`free_result`].
 #[unsafe(no_mangle)]
@@ -78,7 +110,7 @@ pub extern "C" fn states_from_ph(input_json: *const c_char) -> *const c_char {
 /// Compute thermodynamic states from arrays of pressure and entropy.
 ///
 /// Returns a heap-allocated JSON string.
-/// On success, the JSON is an array of [`facade::StatePoint`] objects.
+/// On success, the JSON is an array of [`crate::facade::StatePoint`] objects.
 /// On failure, returns `{"error": "..."}`.
 /// The caller must free the returned pointer with [`free_result`].
 #[unsafe(no_mangle)]
