@@ -33,13 +33,9 @@ This is active work — expect daily changes over the next few days.
 # Run tests
 cargo test
 
-# Build and serve the dashboard locally
-wasm-pack build --target web --features wasm
+# Build WASM and serve the dashboard locally (requires emscripten toolchain)
+cargo build --target wasm32-unknown-emscripten --features wasm --release
+cp target/wasm32-unknown-emscripten/release/brayton.wasm web/
 python3 -m http.server 8080
 # Open http://localhost:8080/web/
-
-# Build Python package
-python -m venv .venv && source .venv/bin/activate
-pip install maturin
-maturin develop --features python
 ```
