@@ -27,6 +27,7 @@ dependencies = [
  "thiserror",
  "twine-core",
  "twine-models",
+ "twine-solvers",
  "uom",
 ]
 
