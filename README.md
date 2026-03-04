@@ -29,13 +29,21 @@ This is active work — expect daily changes over the next few days.
 
 ## Development
 
-```bash
-# Run tests
-cargo test
+### WASM dashboard
 
-# Build WASM and serve the dashboard locally (requires emscripten toolchain)
-cargo build --target wasm32-unknown-emscripten --features wasm --release
+The WASM build compiles CoolProp from source and requires the [Emscripten toolchain](https://emscripten.org/docs/getting_started/downloads.html).
+Clone the CoolProp source into `vendor/` (one-time setup, gitignored):
+
+```bash
+git clone https://github.com/CoolProp/CoolProp.git vendor/CoolProp
+```
+
+Then build and serve:
+
+```bash
+COOLPROP_SOURCE_DIR=vendor/CoolProp cargo build --target wasm32-unknown-emscripten --features wasm --release
 cp target/wasm32-unknown-emscripten/release/brayton.wasm web/
 python3 -m http.server 8080
-# Open http://localhost:8080/web/
 ```
+
+Open <http://localhost:8080/web/>.
