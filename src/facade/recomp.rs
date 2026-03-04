@@ -15,9 +15,11 @@ use uom::si::{
 };
 
 use crate::{
-    IsentropicEfficiency, OperatingPoint, PressureDrop, RecuperatorConfig, StatePoint,
+    IsentropicEfficiency, OperatingPoint, PressureDrop, RecuperatorConfig,
     recompression::{self, Config, HxConfig, TurboConfig},
 };
+
+use super::StatePoint;
 
 /// Input for a recompression Brayton cycle design-point calculation.
 #[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
@@ -30,7 +32,7 @@ pub struct RecompDesignPointInput {
     pub model: String,
 
     /// Working fluid (default `"CarbonDioxide"`).
-    #[cfg_attr(feature = "wasm", serde(default = "default_fluid"))]
+    #[cfg_attr(feature = "wasm", serde(default = "super::default_fluid"))]
     pub fluid: String,
 
     // Operating point.
@@ -131,11 +133,6 @@ pub struct RecompDesignPointOutput {
 #[cfg(feature = "wasm")]
 fn default_model() -> String {
     String::from("CoolProp")
-}
-
-#[cfg(feature = "wasm")]
-fn default_fluid() -> String {
-    String::from("CarbonDioxide")
 }
 
 /// Run a recompression Brayton cycle design-point calculation.
