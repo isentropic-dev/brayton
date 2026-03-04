@@ -15,7 +15,12 @@ use uom::{
     si::f64::{Pressure, ThermodynamicTemperature},
 };
 
-use super::{Config, CycleStates, Error, OperatingPoint, Solution};
+use super::{
+    config::Config,
+    error::Error,
+    solution::{CycleStates, Solution},
+};
+use crate::OperatingPoint;
 
 /// Solve for cycle performance at the design point.
 ///

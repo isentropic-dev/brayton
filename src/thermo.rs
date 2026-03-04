@@ -1,36 +1,47 @@
 //! Thermodynamic state construction helpers.
 //!
-//! Batch state construction from thermodynamic property pairs,
-//! used for diagram rendering. Independent of the cycle solve.
+//! `state_to_point` is used by the facade for all builds.
+//! The batch construction helpers (`states_from_ph`, `states_from_ps`) are
+//! exposed only through the WASM interface.
 
 use twine_models::support::thermo::{
     State,
-    capability::{HasEnthalpy, HasEntropy, HasPressure, StateFrom},
-    fluid::CarbonDioxide,
-    model::{CoolProp, PerfectGas},
+    capability::{HasEnthalpy, HasEntropy, HasPressure},
 };
-use twine_models::support::units::{SpecificEnthalpy, SpecificEntropy};
 use uom::si::{
-    available_energy::kilojoule_per_kilogram, f64::Pressure,
-    mass_density::kilogram_per_cubic_meter, pressure::megapascal,
-    specific_heat_capacity::kilojoule_per_kilogram_kelvin,
+    available_energy::kilojoule_per_kilogram, mass_density::kilogram_per_cubic_meter,
+    pressure::megapascal, specific_heat_capacity::kilojoule_per_kilogram_kelvin,
     thermodynamic_temperature::degree_celsius,
 };
 
-use crate::{
-    StatePoint,
-    fluids::{Butane, Helium, Nitrogen},
+use crate::StatePoint;
+
+#[cfg(feature = "wasm")]
+use twine_models::support::{
+    thermo::{
+        capability::StateFrom,
+        fluid::CarbonDioxide,
+        model::{CoolProp, PerfectGas},
+    },
+    units::{SpecificEnthalpy, SpecificEntropy},
 };
 
+#[cfg(feature = "wasm")]
+use uom::si::f64::Pressure;
+
+#[cfg(feature = "wasm")]
+use crate::fluids::{Butane, Helium, Nitrogen};
+
 /// Input for batch state construction from pressure and enthalpy arrays.
-#[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
+#[cfg(feature = "wasm")]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct StatesFromPhInput {
     /// Thermodynamic model (`"PerfectGas"` or `"CoolProp"`).
-    #[cfg_attr(feature = "wasm", serde(default = "default_model"))]
+    #[serde(default = "default_model")]
     pub model: String,
 
     /// Working fluid (ignored for `PerfectGas`).
-    #[cfg_attr(feature = "wasm", serde(default = "default_fluid"))]
+    #[serde(default = "default_fluid")]
     pub fluid: String,
 
     /// Pressures in megapascals.
@@ -41,14 +52,15 @@ pub struct StatesFromPhInput {
 }
 
 /// Input for batch state construction from pressure and entropy arrays.
-#[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
+#[cfg(feature = "wasm")]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct StatesFromPsInput {
     /// Thermodynamic model (`"PerfectGas"` or `"CoolProp"`).
-    #[cfg_attr(feature = "wasm", serde(default = "default_model"))]
+    #[serde(default = "default_model")]
     pub model: String,
 
     /// Working fluid (ignored for `PerfectGas`).
-    #[cfg_attr(feature = "wasm", serde(default = "default_fluid"))]
+    #[serde(default = "default_fluid")]
     pub fluid: String,
 
     /// Pressures in megapascals.
@@ -64,6 +76,7 @@ pub struct StatesFromPsInput {
 ///
 /// Returns a descriptive error string on mismatched array lengths,
 /// unknown model/fluid, or thermodynamic model failure.
+#[cfg(feature = "wasm")]
 pub fn states_from_ph(input: &StatesFromPhInput) -> Result<Vec<StatePoint>, String> {
     if input.pressures_mpa.len() != input.enthalpies_kj_per_kg.len() {
         return Err(format!(
@@ -108,6 +121,7 @@ pub fn states_from_ph(input: &StatesFromPhInput) -> Result<Vec<StatePoint>, Stri
 ///
 /// Returns a descriptive error string on mismatched array lengths,
 /// unknown model/fluid, or thermodynamic model failure.
+#[cfg(feature = "wasm")]
 pub fn states_from_ps(input: &StatesFromPsInput) -> Result<Vec<StatePoint>, String> {
     if input.pressures_mpa.len() != input.entropies_kj_per_kg_k.len() {
         return Err(format!(
@@ -147,6 +161,7 @@ pub fn states_from_ps(input: &StatesFromPsInput) -> Result<Vec<StatePoint>, Stri
 }
 
 /// Rejects non-CO₂ fluids for `PerfectGas`, which only supports carbon dioxide.
+#[cfg(feature = "wasm")]
 fn reject_non_co2_perfect_gas(fluid: &str) -> Result<(), String> {
     if fluid != "CarbonDioxide" {
         return Err(format!(
@@ -157,6 +172,7 @@ fn reject_non_co2_perfect_gas(fluid: &str) -> Result<(), String> {
 }
 
 /// Batch `state_from(P, h)` for a `CoolProp` fluid.
+#[cfg(feature = "wasm")]
 fn batch_from_ph_coolprop<F>(
     pressures: &[Pressure],
     enthalpies: &[SpecificEnthalpy],
@@ -170,6 +186,7 @@ where
 }
 
 /// Batch `state_from(P, s)` for a `CoolProp` fluid.
+#[cfg(feature = "wasm")]
 fn batch_from_ps_coolprop<F>(
     pressures: &[Pressure],
     entropies: &[SpecificEntropy],
@@ -183,6 +200,7 @@ where
 }
 
 /// Batch `state_from(P, h)` with a generic thermo model.
+#[cfg(feature = "wasm")]
 fn batch_from_ph<Fluid, Thermo>(
     thermo: &Thermo,
     fluid: Fluid,
@@ -210,6 +228,7 @@ where
 }
 
 /// Batch `state_from(P, s)` with a generic thermo model.
+#[cfg(feature = "wasm")]
 fn batch_from_ps<Fluid, Thermo>(
     thermo: &Thermo,
     fluid: Fluid,
@@ -273,6 +292,7 @@ fn default_fluid() -> String {
     String::from("CarbonDioxide")
 }
 
+#[cfg(feature = "wasm")]
 #[cfg(test)]
 mod tests {
     use super::*;
