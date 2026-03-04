@@ -184,7 +184,7 @@ pub fn design_point(input: &DesignPointInput) -> Result<DesignPointOutput, Strin
     ) -> Result<DesignPointOutput, String> {
         let thermo = CoolProp::<F>::new()
             .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
-        let solution = crate::cycle::design_point(op, config, F::default(), &thermo)
+        let solution = crate::simple::cycle::design_point(op, config, F::default(), &thermo)
             .map_err(|e| e.to_string())?;
         Ok(convert_output(&solution, &thermo))
     }
@@ -195,7 +195,7 @@ pub fn design_point(input: &DesignPointInput) -> Result<DesignPointOutput, Strin
         "PerfectGas" => {
             let thermo = PerfectGas::<CarbonDioxide>::new()
                 .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
-            let solution = crate::cycle::design_point(op, &config, CarbonDioxide, &thermo)
+            let solution = crate::simple::cycle::design_point(op, &config, CarbonDioxide, &thermo)
                 .map_err(|e| e.to_string())?;
             Ok(convert_output(&solution, &thermo))
         }
