@@ -1,6 +1,6 @@
 pub mod facade;
-mod recompression;
-mod simple;
+pub mod recompression;
+pub mod simple;
 
 mod config;
 mod fluids;
@@ -13,4 +13,3 @@ mod emscripten;
 pub use config::{InvalidPressureDrop, IsentropicEfficiency, PressureDrop, RecuperatorConfig};
 pub use facade::{DesignPointInput, DesignPointOutput, StatePoint};
 pub use operating_point::OperatingPoint;
-pub use simple::{Config, CycleStates, Error, HxConfig, Solution, TurboConfig, design_point};

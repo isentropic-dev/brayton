@@ -13,6 +13,7 @@ wasm = ["dep:serde", "dep:serde_json"]
 [dependencies]
 twine-models = { version = "0.3", features = ["coolprop-static"] }
 twine-core = "0.6"
+twine-solvers = "0.6"
 uom = "0.36"
 thiserror = "2.0.16"
 serde = { version = "1", features = ["derive"], optional = true }

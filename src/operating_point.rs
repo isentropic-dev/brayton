@@ -1,6 +1,6 @@
 use uom::si::f64::{Power, Pressure, ThermodynamicTemperature};
 
-/// Design-point operating conditions and targets for the simple Brayton cycle.
+/// Design-point operating conditions and targets for the Brayton cycle.
 #[derive(Debug, Clone, Copy)]
 pub struct OperatingPoint {
     /// Compressor inlet temperature (maintained by the precooler).

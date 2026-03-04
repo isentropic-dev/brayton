@@ -17,8 +17,8 @@ use uom::si::{
 };
 
 use crate::{
-    Config, HxConfig, IsentropicEfficiency, OperatingPoint, PressureDrop, RecuperatorConfig,
-    TurboConfig,
+    IsentropicEfficiency, OperatingPoint, PressureDrop, RecuperatorConfig,
+    simple::{Config, HxConfig, TurboConfig},
 };
 
 /// Input for a simple recuperated Brayton cycle design-point calculation.
@@ -253,9 +253,9 @@ fn convert_input(input: &DesignPointInput) -> Result<(OperatingPoint, Config), S
     Ok((op, config))
 }
 
-/// Convert a [`crate::Solution`] to a [`DesignPointOutput`], extracting plain-data values.
+/// Convert a [`crate::simple::Solution`] to a [`DesignPointOutput`], extracting plain-data values.
 fn convert_output<Fluid, Thermo>(
-    solution: &crate::Solution<Fluid>,
+    solution: &crate::simple::Solution<Fluid>,
     thermo: &Thermo,
 ) -> DesignPointOutput
 where
