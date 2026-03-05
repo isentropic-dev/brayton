@@ -1,6 +1,9 @@
 //! WASM-facing facade for the recompression Brayton cycle.
 
-use twine_models::support::thermo::capability::{HasEnthalpy, HasEntropy, HasPressure};
+use twine_models::{
+    models::thermal::hx::discretized::{Inlets, MassFlows, PressureDrops},
+    support::thermo::capability::{HasEnthalpy, HasEntropy, HasPressure},
+};
 use uom::si::{
     f64::{
         Power, Pressure, Ratio, TemperatureInterval, ThermalConductance, ThermodynamicTemperature,
@@ -14,12 +17,12 @@ use uom::si::{
     thermodynamic_temperature::degree_celsius,
 };
 
+use super::StatePoint;
 use crate::{
     IsentropicEfficiency, OperatingPoint, PressureDrop, RecuperatorConfig,
+    effectiveness::{self, EffectivenessThermo},
     recompression::{self, Config, HxConfig, TurboConfig},
 };
-
-use super::StatePoint;
 
 /// Input for a recompression Brayton cycle design-point calculation.
 #[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
@@ -161,7 +164,7 @@ pub fn recomp_design_point(
             .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
         let solution = recompression::design_point(op, recomp_frac, config, F::default(), &thermo)
             .map_err(|e| e.to_string())?;
-        Ok(convert_output(&solution, &thermo))
+        Ok(convert_output(&solution, config, &thermo))
     }
 
     let (op, recomp_frac, config) = convert_input(input)?;
@@ -173,7 +176,7 @@ pub fn recomp_design_point(
             let solution =
                 recompression::design_point(op, recomp_frac, &config, CarbonDioxide, &thermo)
                     .map_err(|e| e.to_string())?;
-            Ok(convert_output(&solution, &thermo))
+            Ok(convert_output(&solution, &config, &thermo))
         }
         "CoolProp" => match input.fluid.as_str() {
             "CarbonDioxide" => solve_coolprop::<CarbonDioxide>(op, recomp_frac, &config),
@@ -262,10 +265,15 @@ fn convert_input(
 
 fn convert_output<Fluid, Thermo>(
     solution: &recompression::Solution<Fluid>,
+    config: &Config,
     thermo: &Thermo,
 ) -> RecompDesignPointOutput
 where
-    Thermo: HasPressure<Fluid = Fluid> + HasEnthalpy<Fluid = Fluid> + HasEntropy<Fluid = Fluid>,
+    Fluid: Clone,
+    Thermo: HasPressure<Fluid = Fluid>
+        + HasEnthalpy<Fluid = Fluid>
+        + HasEntropy<Fluid = Fluid>
+        + EffectivenessThermo<Fluid>,
 {
     let s = &solution.states;
     let state_array = [
@@ -274,6 +282,43 @@ where
     let points = state_array.map(|st| crate::thermo::state_to_point(st, thermo));
 
     let w_dot_net = solution.w_dot_turb - solution.w_dot_mc - solution.w_dot_rc;
+
+    // Pressures from states for recuperator pressure drops.
+    let p2 = thermo.pressure(&s.s2).expect("p2");
+    let p3 = thermo.pressure(&s.s3).expect("p3");
+    let p4 = thermo.pressure(&s.s4).expect("p4");
+    let p5 = thermo.pressure(&s.s5).expect("p5");
+    let p7 = thermo.pressure(&s.s7).expect("p7");
+    let p8 = thermo.pressure(&s.s8).expect("p8");
+    let p9 = thermo.pressure(&s.s9).expect("p9");
+
+    // LT recuperator: top = cold (s2→s3), bottom = hot (s8→s9).
+    let lt_effectiveness = effectiveness::compute(
+        Inlets {
+            top: s.s2.clone(),
+            bottom: s.s8.clone(),
+        },
+        MassFlows::new_unchecked(solution.m_dot_mc, solution.m_dot_t),
+        PressureDrops::new_unchecked(p2 - p3, p8 - p9),
+        solution.q_dot_lt,
+        config.hx.lt_recuperator.segments,
+        thermo,
+    )
+    .unwrap_or(f64::NAN);
+
+    // HT recuperator: top = cold (s4→s5), bottom = hot (s7→s8).
+    let ht_effectiveness = effectiveness::compute(
+        Inlets {
+            top: s.s4.clone(),
+            bottom: s.s7.clone(),
+        },
+        MassFlows::new_unchecked(solution.m_dot_t, solution.m_dot_t),
+        PressureDrops::new_unchecked(p4 - p5, p7 - p8),
+        solution.q_dot_ht,
+        config.hx.ht_recuperator.segments,
+        thermo,
+    )
+    .unwrap_or(f64::NAN);
 
     RecompDesignPointOutput {
         mass_flow_total_kg_per_s: solution.m_dot_t.get::<kilogram_per_second>(),
@@ -288,10 +333,10 @@ where
         thermal_efficiency: solution.eta_thermal.get::<ratio>(),
         lt_recuperator_heat_transfer_mw: solution.q_dot_lt.get::<megawatt>(),
         lt_recuperator_min_delta_t_k: solution.lt_min_delta_t.get::<delta_kelvin>(),
-        lt_recuperator_effectiveness: solution.lt_effectiveness.get(),
+        lt_recuperator_effectiveness: lt_effectiveness,
         ht_recuperator_heat_transfer_mw: solution.q_dot_ht.get::<megawatt>(),
         ht_recuperator_min_delta_t_k: solution.ht_min_delta_t.get::<delta_kelvin>(),
-        ht_recuperator_effectiveness: solution.ht_effectiveness.get(),
+        ht_recuperator_effectiveness: ht_effectiveness,
         states: points,
     }
 }
@@ -342,6 +387,18 @@ mod tests {
             relative_error < 1e-4,
             "net power {:.6} MW deviates from target",
             out.net_power_mw,
+        );
+
+        // Effectiveness must be physical.
+        assert!(
+            (0.0..=1.0).contains(&out.lt_recuperator_effectiveness),
+            "LT effectiveness {} is outside [0, 1]",
+            out.lt_recuperator_effectiveness,
+        );
+        assert!(
+            (0.0..=1.0).contains(&out.ht_recuperator_effectiveness),
+            "HT effectiveness {} is outside [0, 1]",
+            out.ht_recuperator_effectiveness,
         );
     }
 

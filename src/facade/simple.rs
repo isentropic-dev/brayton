@@ -1,10 +1,11 @@
-use twine_models::support::thermo::{
-    capability::{HasEnthalpy, HasEntropy, HasPressure},
-    fluid::CarbonDioxide,
-    model::{CoolProp, PerfectGas},
+use twine_models::{
+    models::thermal::hx::discretized::{Inlets, MassFlows, PressureDrops},
+    support::thermo::{
+        capability::{HasEnthalpy, HasEntropy, HasPressure},
+        fluid::CarbonDioxide,
+        model::{CoolProp, PerfectGas},
+    },
 };
-
-use crate::fluids::{Butane, Helium, Nitrogen};
 use uom::si::{
     f64::{Power, Pressure, Ratio, ThermalConductance, ThermodynamicTemperature},
     mass_rate::kilogram_per_second,
@@ -16,12 +17,13 @@ use uom::si::{
     thermodynamic_temperature::degree_celsius,
 };
 
+use super::StatePoint;
 use crate::{
     IsentropicEfficiency, OperatingPoint, PressureDrop, RecuperatorConfig,
+    effectiveness::{self, EffectivenessThermo},
+    fluids::{Butane, Helium, Nitrogen},
     simple::{Config, HxConfig, TurboConfig},
 };
-
-use super::StatePoint;
 
 /// Input for a simple recuperated Brayton cycle design-point calculation.
 ///
@@ -162,7 +164,7 @@ pub fn design_point(input: &DesignPointInput) -> Result<DesignPointOutput, Strin
             .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
         let solution = crate::simple::cycle::design_point(op, config, F::default(), &thermo)
             .map_err(|e| e.to_string())?;
-        Ok(convert_output(&solution, &thermo))
+        Ok(convert_output(&solution, config, &thermo))
     }
 
     let (op, config) = convert_input(input)?;
@@ -173,7 +175,7 @@ pub fn design_point(input: &DesignPointInput) -> Result<DesignPointOutput, Strin
                 .map_err(|e| format!("failed to construct thermodynamic model: {e}"))?;
             let solution = crate::simple::cycle::design_point(op, &config, CarbonDioxide, &thermo)
                 .map_err(|e| e.to_string())?;
-            Ok(convert_output(&solution, &thermo))
+            Ok(convert_output(&solution, &config, &thermo))
         }
         "CoolProp" => match input.fluid.as_str() {
             "CarbonDioxide" => solve_coolprop::<CarbonDioxide>(op, &config),
@@ -232,10 +234,15 @@ fn convert_input(input: &DesignPointInput) -> Result<(OperatingPoint, Config), S
 /// Convert a [`crate::simple::Solution`] to a [`DesignPointOutput`], extracting plain-data values.
 fn convert_output<Fluid, Thermo>(
     solution: &crate::simple::Solution<Fluid>,
+    config: &Config,
     thermo: &Thermo,
 ) -> DesignPointOutput
 where
-    Thermo: HasPressure<Fluid = Fluid> + HasEnthalpy<Fluid = Fluid> + HasEntropy<Fluid = Fluid>,
+    Fluid: Clone,
+    Thermo: HasPressure<Fluid = Fluid>
+        + HasEnthalpy<Fluid = Fluid>
+        + HasEntropy<Fluid = Fluid>
+        + EffectivenessThermo<Fluid>,
 {
     let states = &solution.states;
     let state_array = [
@@ -245,6 +252,25 @@ where
     let points = state_array.map(|s| crate::thermo::state_to_point(s, thermo));
 
     let w_dot_net = solution.w_dot_turb - solution.w_dot_comp;
+
+    // Recuperator: top = cold (s2→s3), bottom = hot (s5→s6).
+    let p2 = thermo.pressure(&states.s2).expect("p2");
+    let p3 = thermo.pressure(&states.s3).expect("p3");
+    let p5 = thermo.pressure(&states.s5).expect("p5");
+    let p6 = thermo.pressure(&states.s6).expect("p6");
+
+    let effectiveness = effectiveness::compute(
+        Inlets {
+            top: states.s2.clone(),
+            bottom: states.s5.clone(),
+        },
+        MassFlows::new_unchecked(solution.m_dot, solution.m_dot),
+        PressureDrops::new_unchecked(p2 - p3, p5 - p6),
+        solution.q_dot_recup,
+        config.hx.recuperator.segments,
+        thermo,
+    )
+    .unwrap_or(f64::NAN);
 
     DesignPointOutput {
         mass_flow_kg_per_s: solution.m_dot.get::<kilogram_per_second>(),
@@ -256,7 +282,7 @@ where
         thermal_efficiency: solution.eta_thermal.get::<ratio>(),
         recuperator_heat_transfer_mw: solution.q_dot_recup.get::<megawatt>(),
         recuperator_min_delta_t_k: solution.recuperator_min_delta_t.get::<delta_kelvin>(),
-        recuperator_effectiveness: solution.recuperator_effectiveness.get(),
+        recuperator_effectiveness: effectiveness,
         states: points,
     }
 }
@@ -305,6 +331,13 @@ mod tests {
             relative_error < 1e-6,
             "net power {:.6} MW deviates too far from target",
             out.net_power_mw,
+        );
+
+        // Effectiveness must be physical.
+        assert!(
+            (0.0..=1.0).contains(&out.recuperator_effectiveness),
+            "effectiveness {} is outside [0, 1]",
+            out.recuperator_effectiveness,
         );
     }
 
