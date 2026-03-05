@@ -66,10 +66,20 @@ main {
   gap: 1px;
   background: #ddd;
   min-height: calc(100vh - 80px);
+  animation: fadeIn 0.6s ease-out;
+  transition: opacity 0.3s linear;
+}
+
+main.fading-out {
+  opacity: 0;
 }
 
 main[hidden] {
   display: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
 }
 
 .inputs, .results {
@@ -140,8 +150,18 @@ select {
 
 /* Results */
 
-.scalars, .states, .charts, .recup-profile {
+.scalars, .states, .charts, .recup-profile, .scalars-row {
   margin-bottom: 1.5rem;
+}
+
+.scalars-row {
+  display: flex;
+  gap: 4.5rem;
+  align-items: flex-start;
+}
+
+.scalars-row .scalars {
+  margin-bottom: 0;
 }
 
 h3 {
@@ -196,7 +216,23 @@ th {
   color: #444;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  padding-top: 0.75rem !important;
+  padding-top: calc(1.25rem + 5px) !important;
+}
+
+tr:first-child > .sub-header {
+  padding-top: calc(0.5rem - 3px) !important;
+}
+
+#s-state-table th,
+#r-state-table th {
+  text-align: right;
+}
+
+#s-state-table th:first-child,
+#s-state-table th:nth-child(2),
+#r-state-table th:first-child,
+#r-state-table th:nth-child(2) {
+  text-align: left;
 }
 
 #s-state-table td,
@@ -227,12 +263,14 @@ th {
 
 .chart-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
 }
 
 .chart-container {
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Responsive: stack layout on narrow screens */
@@ -249,6 +287,11 @@ th {
 
   main[hidden] {
     display: none;
+  }
+
+  .scalars-row {
+    flex-direction: column;
+    gap: 0;
   }
 
   .inputs {
@@ -269,11 +312,9 @@ th {
     width: 100%;
   }
 
-  .chart-grid {
-    grid-template-columns: 1fr;
-  }
 
-  .states {
+
+  .states-scroll {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
