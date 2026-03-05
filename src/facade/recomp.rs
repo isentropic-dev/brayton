@@ -27,10 +27,14 @@ use crate::{
 /// Input for a recompression Brayton cycle design-point calculation.
 #[cfg_attr(feature = "wasm", derive(serde::Serialize, serde::Deserialize))]
 pub struct RecompDesignPointInput {
-    /// Thermodynamic model: `"CoolProp"` (default).
+    /// Thermodynamic model: `"CoolProp"` (default) or `"PerfectGas"`.
     ///
-    /// `"PerfectGas"` is accepted but will fail for `recomp_frac > 0`
-    /// because ideal gas lacks the density asymmetry the cycle requires.
+    /// `"PerfectGas"` will solve but won't capture the thermodynamic
+    /// benefit of recompression.
+    /// Ideal gas has no density variation near the critical point,
+    /// so the main compressor and recompressor see similar specific work
+    /// and the recompression fraction doesn't improve efficiency
+    /// the way it does with real-fluid models like `CoolProp`.
     #[cfg_attr(feature = "wasm", serde(default = "default_model"))]
     pub model: String,
 

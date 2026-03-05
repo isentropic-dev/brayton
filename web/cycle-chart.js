@@ -14,7 +14,7 @@
 const CHART_WIDTH = 576;
 const CHART_HEIGHT = 336;
 const PADDING = { top: 40, right: 30, bottom: 50, left: 65 };
-const POINT_RADIUS = 9;
+const POINT_RADIUS = 5;
 const COLORS = {
   line: '#2563eb',
   fill: 'rgba(37, 99, 235, 0.06)',
@@ -157,7 +157,7 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
       ctx.stroke();
 
       ctx.fillStyle = COLORS.label;
-      ctx.font = 'bold 9px -apple-system, sans-serif';
+      ctx.font = 'bold 7px -apple-system, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(p.label, cx, cy);
