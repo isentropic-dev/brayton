@@ -1,13 +1,9 @@
-//! Correct recuperator effectiveness via pinch-point analysis.
+//! Recuperator effectiveness via pinch-point analysis.
 //!
-//! The effectiveness values reported by `twine-models` are incorrect for
-//! variable-property fluids (see [twine-models#73]).
-//! This module computes effectiveness by finding the maximum possible
-//! heat transfer — the point where an infinitely long counterflow HX
-//! would develop a zero temperature pinch — and dividing actual heat
-//! transfer by that limit.
-//!
-//! [twine-models#73]: https://github.com/isentropic-dev/twine-models/issues/73
+//! Computes effectiveness by finding the maximum possible heat transfer —
+//! the point where an infinitely long counterflow HX would develop a
+//! zero temperature pinch — and dividing actual heat transfer by that
+//! limit. This approach handles variable-property fluids correctly.
 
 use std::convert::Infallible;
 

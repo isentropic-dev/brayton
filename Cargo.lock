@@ -183,9 +183,9 @@ checksum = "39b208bb973f853140976c2df20b0322f375e2f5d09aa66f52e41980ab827118"
 
 [[package]]
 name = "twine-models"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb54440e2100d54656611d4db69b553d5334720e282a34f5614a5d7deda43f80"
+checksum = "ea623ce75430bf3e7149af64d4e22e9bebb1821756e998ac9085c488cb847bbc"
 dependencies = [
  "cmake",
  "num-traits",

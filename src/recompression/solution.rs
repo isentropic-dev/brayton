@@ -1,4 +1,4 @@
-use twine_models::{models::thermal::hx::discretized::Effectiveness, support::thermo::State};
+use twine_models::support::thermo::State;
 use uom::si::f64::{MassRate, Power, Ratio, TemperatureInterval};
 
 /// Model solution at the design point for a recompression Brayton cycle.
@@ -45,12 +45,6 @@ pub struct Solution<Fluid> {
 
     /// HT recuperator minimum hot-to-cold temperature difference.
     pub ht_min_delta_t: TemperatureInterval,
-
-    /// LT recuperator effectiveness.
-    pub lt_effectiveness: Effectiveness,
-
-    /// HT recuperator effectiveness.
-    pub ht_effectiveness: Effectiveness,
 }
 
 /// Thermodynamic states around the recompression cycle.
