@@ -8,7 +8,7 @@
  *   chart.update(hotTemps, coldTemps)  // arrays of temperature in °C
  */
 
-const CHART_WIDTH = 740;
+const CHART_WIDTH = 576;
 const CHART_HEIGHT = 280;
 const PADDING = { top: 20, right: 30, bottom: 50, left: 65 };
 const COLORS = {
@@ -144,14 +144,26 @@ export function createRecupChart(container) {
     ctx.fillText('Cold side', legendX + 25, legendY + 22);
   }
 
-  function update(hotTemps, coldTemps) {
-    canvas.style.width = CHART_WIDTH + 'px';
+  let lastHot = null, lastCold = null;
+
+  function render() {
+    if (!lastHot) return;
+    const w = Math.min(CHART_WIDTH, container.clientWidth || CHART_WIDTH);
+    canvas.style.width = w + 'px';
     canvas.style.height = CHART_HEIGHT + 'px';
-    canvas.width = CHART_WIDTH * dpr;
+    canvas.width = w * dpr;
     canvas.height = CHART_HEIGHT * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(hotTemps, coldTemps, CHART_WIDTH, CHART_HEIGHT);
+    draw(lastHot, lastCold, w, CHART_HEIGHT);
   }
+
+  function update(hotTemps, coldTemps) {
+    lastHot = hotTemps;
+    lastCold = coldTemps;
+    render();
+  }
+
+  new ResizeObserver(render).observe(container);
 
   return { update };
 }

@@ -150,42 +150,14 @@ function renderSimpleStates(states) {
 
 function buildSimpleCurvePoints(states, model, fluid) {
   const [s1, s2, s3, s4, s5, s6] = states;
-  const n = N_CURVE_POINTS;
-  const base = { model, fluid };
-
-  const segments = [
+  return buildCurveFromSegments([
     { from: s1, to: s2, method: 'ps', label_from: '1' },
     { from: s2, to: s3, method: 'ph', label_from: '2' },
     { from: s3, to: s4, method: 'ph', label_from: '3' },
     { from: s4, to: s5, method: 'ps', label_from: '4' },
     { from: s5, to: s6, method: 'ph', label_from: '5' },
     { from: s6, to: s1, method: 'ph', label_from: '6' },
-  ];
-
-  const allPoints = [];
-  for (const seg of segments) {
-    const pressures = linspace(seg.from.pressure_mpa, seg.to.pressure_mpa, n);
-    let curveStates;
-    if (seg.method === 'ph') {
-      curveStates = statesFromPh({
-        ...base,
-        pressures_mpa: pressures,
-        enthalpies_kj_per_kg: linspace(seg.from.enthalpy_kj_per_kg, seg.to.enthalpy_kj_per_kg, n),
-      });
-    } else {
-      curveStates = statesFromPs({
-        ...base,
-        pressures_mpa: pressures,
-        entropies_kj_per_kg_k: linspace(seg.from.entropy_kj_per_kg_k, seg.to.entropy_kj_per_kg_k, n),
-      });
-    }
-    for (let i = 0; i < curveStates.length - 1; i++) {
-      const pt = curveStates[i];
-      if (i === 0) pt.label = seg.label_from;
-      allPoints.push(pt);
-    }
-  }
-  return allPoints;
+  ], model, fluid);
 }
 
 function renderSimpleRecupProfile(states, model, fluid) {
@@ -427,26 +399,9 @@ function renderRecompRecupProfiles(states, model, fluid) {
   } catch { /* skip */ }
 }
 
-function buildRecompCurvePoints(states, model, fluid) {
-  const [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] = states;
+function buildCurveFromSegments(segments, model, fluid) {
   const n = N_CURVE_POINTS;
   const base = { model, fluid };
-
-  // The recompression cycle has two paths that merge/split.
-  // For the T-s / h-s diagrams, trace the main flow path:
-  // 1→2→3→4→5→6→7→8→9→1 (skip 10, it's the recomp branch).
-  const segments = [
-    { from: s1, to: s2, method: 'ps', label_from: '1' },
-    { from: s2, to: s3, method: 'ph', label_from: '2' },
-    { from: s3, to: s4, method: 'ph', label_from: '3' },
-    { from: s4, to: s5, method: 'ph', label_from: '4' },
-    { from: s5, to: s6, method: 'ph', label_from: '5' },
-    { from: s6, to: s7, method: 'ps', label_from: '6' },
-    { from: s7, to: s8, method: 'ph', label_from: '7' },
-    { from: s8, to: s9, method: 'ph', label_from: '8' },
-    { from: s9, to: s1, method: 'ph', label_from: '9' },
-  ];
-
   const allPoints = [];
   for (const seg of segments) {
     const pressures = linspace(seg.from.pressure_mpa, seg.to.pressure_mpa, n);
@@ -473,29 +428,72 @@ function buildRecompCurvePoints(states, model, fluid) {
   return allPoints;
 }
 
+function buildRecompCurvePoints(states, model, fluid) {
+  const [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] = states;
+
+  // Main flow path: 1→2→3→4→5→6→7→8→9→1.
+  const mainSegments = [
+    { from: s1, to: s2, method: 'ps', label_from: '1' },
+    { from: s2, to: s3, method: 'ph', label_from: '2' },
+    { from: s3, to: s4, method: 'ph', label_from: '3' },
+    { from: s4, to: s5, method: 'ph', label_from: '4' },
+    { from: s5, to: s6, method: 'ph', label_from: '5' },
+    { from: s6, to: s7, method: 'ps', label_from: '6' },
+    { from: s7, to: s8, method: 'ph', label_from: '7' },
+    { from: s8, to: s9, method: 'ph', label_from: '8' },
+    { from: s9, to: s1, method: 'ph', label_from: '9' },
+  ];
+
+  // Recompressor branch: 9→10→4.
+  const branchSegments = [
+    { from: s9, to: s10, method: 'ps' },
+    { from: s10, to: s4, method: 'ph', label_from: '10' },
+  ];
+
+  const mainPoints = buildCurveFromSegments(mainSegments, model, fluid);
+  const branchPoints = buildCurveFromSegments(branchSegments, model, fluid);
+
+  return { mainPoints, branchPoints };
+}
+
 function renderRecompCharts(states, model, fluid) {
-  let curvePoints;
+  let mainPoints, branchPoints;
   try {
-    curvePoints = buildRecompCurvePoints(states, model, fluid);
+    ({ mainPoints, branchPoints } = buildRecompCurvePoints(states, model, fluid));
   } catch {
-    // Fallback: straight lines between main-path state points.
+    // Fallback: straight lines between state points.
     const mainPath = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-    curvePoints = mainPath.map(i => ({ ...states[i], label: String(i + 1) }));
+    mainPoints = mainPath.map(i => ({ ...states[i], label: String(i + 1) }));
+    branchPoints = [
+      { ...states[9], label: '10' },
+      { ...states[3] },
+    ];
   }
 
-  const tsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'temperature_c');
-  const hsPoints = toChartPoints(curvePoints, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
-  const pvPoints = curvePoints.map(p => ({ x: 1 / p.density_kg_per_m3, y: p.pressure_mpa, label: p.label }));
-  const phPoints = toChartPoints(curvePoints, 'enthalpy_kj_per_kg', 'pressure_mpa');
+  function toBranches(points, xKey, yKey) {
+    return [toChartPoints(points, xKey, yKey)];
+  }
+  function toBranchesPv(points) {
+    return [points.map(p => ({ x: 1 / p.density_kg_per_m3, y: p.pressure_mpa, label: p.label }))];
+  }
+
+  const tsPoints = toChartPoints(mainPoints, 'entropy_kj_per_kg_k', 'temperature_c');
+  const tsBranches = toBranches(branchPoints, 'entropy_kj_per_kg_k', 'temperature_c');
+  const hsPoints = toChartPoints(mainPoints, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
+  const hsBranches = toBranches(branchPoints, 'entropy_kj_per_kg_k', 'enthalpy_kj_per_kg');
+  const pvPoints = mainPoints.map(p => ({ x: 1 / p.density_kg_per_m3, y: p.pressure_mpa, label: p.label }));
+  const pvBranches = toBranchesPv(branchPoints);
+  const phPoints = toChartPoints(mainPoints, 'enthalpy_kj_per_kg', 'pressure_mpa');
+  const phBranches = toBranches(branchPoints, 'enthalpy_kj_per_kg', 'pressure_mpa');
 
   if (!rtsChart) rtsChart = createCycleChart(document.getElementById('r-chart-ts'), { title: 'T–s', xLabel: 's (kJ/kg·K)', yLabel: 'T (°C)' });
-  rtsChart.update(tsPoints);
+  rtsChart.update(tsPoints, { branches: tsBranches });
   if (!rhsChart) rhsChart = createCycleChart(document.getElementById('r-chart-hs'), { title: 'h–s', xLabel: 's (kJ/kg·K)', yLabel: 'h (kJ/kg)' });
-  rhsChart.update(hsPoints);
+  rhsChart.update(hsPoints, { branches: hsBranches });
   if (!rpvChart) rpvChart = createCycleChart(document.getElementById('r-chart-pv'), { title: 'P–v', xLabel: 'v (m³/kg)', yLabel: 'P (MPa)' });
-  rpvChart.update(pvPoints);
+  rpvChart.update(pvPoints, { branches: pvBranches });
   if (!rphChart) rphChart = createCycleChart(document.getElementById('r-chart-ph'), { title: 'P–h', xLabel: 'h (kJ/kg)', yLabel: 'P (MPa)' });
-  rphChart.update(phPoints);
+  rphChart.update(phPoints, { branches: phBranches });
 }
 
 function showRecompError(msg) {
@@ -532,13 +530,29 @@ let recompNeedsCalc = true;
 
 function switchCycle(cycle) {
   if (cycle === activeCycle) return;
+
+  const oldView = document.getElementById(
+    activeCycle === 'simple' ? 'simple-cycle' : 'recompression-cycle'
+  );
+  const newView = document.getElementById(
+    cycle === 'simple' ? 'simple-cycle' : 'recompression-cycle'
+  );
+
   activeCycle = cycle;
 
   document.querySelectorAll('.tab').forEach(t => {
     t.classList.toggle('active', t.dataset.cycle === cycle);
   });
-  document.getElementById('simple-cycle').hidden = (cycle !== 'simple');
-  document.getElementById('recompression-cycle').hidden = (cycle !== 'recompression');
+
+  oldView.classList.add('fading-out');
+  function swap() {
+    oldView.hidden = true;
+    oldView.classList.remove('fading-out');
+    newView.hidden = false;
+  }
+  oldView.addEventListener('transitionend', swap, { once: true });
+  // Fallback if transitionend doesn't fire (e.g., rapid clicks, skipped transition).
+  setTimeout(swap, 350);
 
   // Calculate on first switch if needed.
   if (cycle === 'simple' && simpleNeedsCalc) {

@@ -3,19 +3,18 @@
  *
  * API:
  *   const chart = createCycleChart(container, { title, xLabel, yLabel })
- *   chart.update(points)  // points = [{ x, y, label }, ...]
- *
- * Points are drawn connected in order, with the last point connecting
- * back to the first (closing the cycle). Each point gets a label.
+ *   chart.update(points, { branches })
+ *     points = [{ x, y, label }, ...]  — main cycle (closed loop)
+ *     branches = [[{ x, y, label }, ...], ...]  — optional open paths
  *
  * To swap rendering (e.g., to a charting library), replace this file
  * and keep the same create/update interface.
  */
 
-const CHART_WIDTH = 360;
-const CHART_HEIGHT = 280;
+const CHART_WIDTH = 576;
+const CHART_HEIGHT = 336;
 const PADDING = { top: 40, right: 30, bottom: 50, left: 65 };
-const POINT_RADIUS = 4;
+const POINT_RADIUS = 9;
 const COLORS = {
   line: '#2563eb',
   fill: 'rgba(37, 99, 235, 0.06)',
@@ -32,8 +31,6 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
   container.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let currentPoints = null;
-
 
   function niceRange(min, max) {
     if (min === max) {
@@ -57,15 +54,16 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
     return step * mag;
   }
 
-  function draw(points, w, h) {
+  function draw(points, branches, w, h) {
     ctx.clearRect(0, 0, w, h);
 
     const plotW = w - PADDING.left - PADDING.right;
     const plotH = h - PADDING.top - PADDING.bottom;
 
-    // Compute ranges from data.
-    const xs = points.map(p => p.x);
-    const ys = points.map(p => p.y);
+    // Compute ranges from all data (main + branches).
+    const allPoints = points.concat(...branches);
+    const xs = allPoints.map(p => p.x);
+    const ys = allPoints.map(p => p.y);
     const [xMin, xMax] = niceRange(Math.min(...xs), Math.max(...xs));
     const [yMin, yMax] = niceRange(Math.min(...ys), Math.max(...ys));
 
@@ -128,35 +126,42 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Points and labels (only for labeled state points).
-    // Collect labeled points first to compute centroid for offset direction.
-    const labeled = points.filter(p => p.label);
-    const centX = labeled.reduce((s, p) => s + toCanvasX(p.x), 0) / labeled.length;
-    const centY = labeled.reduce((s, p) => s + toCanvasY(p.y), 0) / labeled.length;
+    // Branch lines (open paths, dashed).
+    for (const branch of branches) {
+      if (branch.length < 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(toCanvasX(branch[0].x), toCanvasY(branch[0].y));
+      for (let i = 1; i < branch.length; i++) {
+        ctx.lineTo(toCanvasX(branch[i].x), toCanvasY(branch[i].y));
+      }
+      ctx.strokeStyle = COLORS.line;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
 
+    // State points: hollow circles with number inside.
+    const labeled = allPoints.filter(p => p.label);
     for (const p of labeled) {
       const cx = toCanvasX(p.x);
       const cy = toCanvasY(p.y);
 
+      // White fill to clear the cycle line behind the circle.
       ctx.beginPath();
       ctx.arc(cx, cy, POINT_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.point;
+      ctx.fillStyle = '#fff';
       ctx.fill();
-
-      // Push label away from the centroid so it doesn't overlap the cycle.
-      let dx = cx - centX;
-      let dy = cy - centY;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      dx = dx / len * 14;
-      dy = dy / len * 14;
+      ctx.strokeStyle = COLORS.point;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
 
       ctx.fillStyle = COLORS.label;
-      ctx.font = 'bold 11px -apple-system, sans-serif';
+      ctx.font = 'bold 9px -apple-system, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(p.label, cx + dx, cy + dy);
+      ctx.fillText(p.label, cx, cy);
     }
-    ctx.textBaseline = 'alphabetic';
 
     // Title.
     ctx.fillStyle = COLORS.title;
@@ -183,15 +188,27 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
     return v.toFixed(3);
   }
 
-  function update(points) {
-    currentPoints = points;
-    canvas.style.width = CHART_WIDTH + 'px';
-    canvas.style.height = CHART_HEIGHT + 'px';
-    canvas.width = CHART_WIDTH * dpr;
-    canvas.height = CHART_HEIGHT * dpr;
+  let lastPoints = null, lastBranches = [];
+
+  function render() {
+    if (!lastPoints) return;
+    const w = Math.min(CHART_WIDTH, container.clientWidth || CHART_WIDTH);
+    const h = CHART_HEIGHT;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(points, CHART_WIDTH, CHART_HEIGHT);
+    draw(lastPoints, lastBranches, w, h);
   }
+
+  function update(points, { branches = [] } = {}) {
+    lastPoints = points;
+    lastBranches = branches;
+    render();
+  }
+
+  new ResizeObserver(render).observe(container);
 
   return { update };
 }

@@ -131,20 +131,22 @@
 
         <div class="states">
           <h3>State Points</h3>
-          <table id="s-state-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Location</th>
-                <th>T (°C)</th>
-                <th>P (MPa)</th>
-                <th>ρ (kg/m³)</th>
-                <th>h (kJ/kg)</th>
-                <th>s (kJ/kg·K)</th>
-              </tr>
-            </thead>
-            <tbody id="s-state-tbody"></tbody>
-          </table>
+          <div class="states-scroll">
+            <table id="s-state-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Location</th>
+                  <th>T (°C)</th>
+                  <th>P (MPa)</th>
+                  <th>ρ (kg/m³)</th>
+                  <th>h (kJ/kg)</th>
+                  <th>s (kJ/kg·K)</th>
+                </tr>
+              </thead>
+              <tbody id="s-state-tbody"></tbody>
+            </table>
+          </div>
         </div>
 
         <div class="recup-profile">
@@ -227,7 +229,7 @@
       <fieldset>
         <legend>LT Recuperator</legend>
         <label>UA (kW/K)
-          <input type="number" id="r-lt_recuperator_ua_kw_per_k" value="500" step="100">
+          <input type="number" id="r-lt_recuperator_ua_kw_per_k" value="1000" step="100">
         </label>
         <label>Segments
           <select id="r-lt_recuperator_segments">
@@ -249,7 +251,7 @@
       <fieldset>
         <legend>HT Recuperator</legend>
         <label>UA (kW/K)
-          <input type="number" id="r-ht_recuperator_ua_kw_per_k" value="500" step="100">
+          <input type="number" id="r-ht_recuperator_ua_kw_per_k" value="1000" step="100">
         </label>
         <label>Segments
           <select id="r-ht_recuperator_segments">
@@ -285,55 +287,59 @@
       <div id="r-error" class="error" hidden></div>
 
       <div id="r-results-content">
-        <div class="scalars">
-          <h3>Performance</h3>
-          <table class="scalar-table">
-            <tbody>
-              <tr><td>Thermal efficiency</td><td id="r-r-eta">—</td><td>%</td></tr>
-              <tr><td>Total mass flow</td><td id="r-r-mass-flow-total">—</td><td>kg/s</td></tr>
-              <tr><td>Main compressor flow</td><td id="r-r-mass-flow-mc">—</td><td>kg/s</td></tr>
-              <tr><td>Recompressor flow</td><td id="r-r-mass-flow-rc">—</td><td>kg/s</td></tr>
-              <tr><td>Main compressor power</td><td id="r-r-mc-power">—</td><td>MW</td></tr>
-              <tr><td>Recompressor power</td><td id="r-r-rc-power">—</td><td>MW</td></tr>
-              <tr><td>Turbine power</td><td id="r-r-turb-power">—</td><td>MW</td></tr>
-              <tr><td>Heat input</td><td id="r-r-heat-in">—</td><td>MW</td></tr>
-              <tr><td>Heat rejection</td><td id="r-r-heat-rej">—</td><td>MW</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <div class="scalars-row">
+          <div class="scalars">
+            <h3>Performance</h3>
+            <table class="scalar-table">
+              <tbody>
+                <tr><td>Thermal efficiency</td><td id="r-r-eta">—</td><td>%</td></tr>
+                <tr><td>Total mass flow</td><td id="r-r-mass-flow-total">—</td><td>kg/s</td></tr>
+                <tr><td>Main compressor flow</td><td id="r-r-mass-flow-mc">—</td><td>kg/s</td></tr>
+                <tr><td>Recompressor flow</td><td id="r-r-mass-flow-rc">—</td><td>kg/s</td></tr>
+                <tr><td>Main compressor power</td><td id="r-r-mc-power">—</td><td>MW</td></tr>
+                <tr><td>Recompressor power</td><td id="r-r-rc-power">—</td><td>MW</td></tr>
+                <tr><td>Turbine power</td><td id="r-r-turb-power">—</td><td>MW</td></tr>
+                <tr><td>Heat input</td><td id="r-r-heat-in">—</td><td>MW</td></tr>
+                <tr><td>Heat rejection</td><td id="r-r-heat-rej">—</td><td>MW</td></tr>
+              </tbody>
+            </table>
+          </div>
 
-        <div class="scalars">
-          <h3>Recuperators</h3>
-          <table class="scalar-table">
-            <tbody>
-              <tr><td colspan="3" class="sub-header">Low Temperature</td></tr>
-              <tr><td>Heat transfer</td><td id="r-r-lt-q">—</td><td>MW</td></tr>
-              <tr><td>Min ΔT</td><td id="r-r-lt-min-dt">—</td><td>K</td></tr>
-              <tr><td>Effectiveness</td><td id="r-r-lt-effectiveness">—</td><td>—</td></tr>
-              <tr><td colspan="3" class="sub-header">High Temperature</td></tr>
-              <tr><td>Heat transfer</td><td id="r-r-ht-q">—</td><td>MW</td></tr>
-              <tr><td>Min ΔT</td><td id="r-r-ht-min-dt">—</td><td>K</td></tr>
-              <tr><td>Effectiveness</td><td id="r-r-ht-effectiveness">—</td><td>—</td></tr>
-            </tbody>
-          </table>
+          <div class="scalars">
+            <h3>Recuperators</h3>
+            <table class="scalar-table">
+              <tbody>
+                <tr><td colspan="3" class="sub-header">Low Temperature</td></tr>
+                <tr><td>Heat transfer</td><td id="r-r-lt-q">—</td><td>MW</td></tr>
+                <tr><td>Min ΔT</td><td id="r-r-lt-min-dt">—</td><td>K</td></tr>
+                <tr><td>Effectiveness</td><td id="r-r-lt-effectiveness">—</td><td>—</td></tr>
+                <tr><td colspan="3" class="sub-header">High Temperature</td></tr>
+                <tr><td>Heat transfer</td><td id="r-r-ht-q">—</td><td>MW</td></tr>
+                <tr><td>Min ΔT</td><td id="r-r-ht-min-dt">—</td><td>K</td></tr>
+                <tr><td>Effectiveness</td><td id="r-r-ht-effectiveness">—</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div class="states">
           <h3>State Points</h3>
-          <table id="r-state-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Location</th>
-                <th>T (°C)</th>
-                <th>P (MPa)</th>
-                <th>ρ (kg/m³)</th>
-                <th>h (kJ/kg)</th>
-                <th>s (kJ/kg·K)</th>
-              </tr>
-            </thead>
-            <tbody id="r-state-tbody"></tbody>
-          </table>
+          <div class="states-scroll">
+            <table id="r-state-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Location</th>
+                  <th>T (°C)</th>
+                  <th>P (MPa)</th>
+                  <th>ρ (kg/m³)</th>
+                  <th>h (kJ/kg)</th>
+                  <th>s (kJ/kg·K)</th>
+                </tr>
+              </thead>
+              <tbody id="r-state-tbody"></tbody>
+            </table>
+          </div>
         </div>
 
         <div class="recup-profile">
