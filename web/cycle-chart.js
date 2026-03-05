@@ -31,8 +31,6 @@ export function createCycleChart(container, { title, xLabel, yLabel }) {
   container.appendChild(canvas);
 
   const ctx = canvas.getContext('2d');
-  let currentPoints = null;
-
 
   function niceRange(min, max) {
     if (min === max) {

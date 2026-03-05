@@ -446,7 +446,7 @@ function buildRecompCurvePoints(states, model, fluid) {
 
   // Recompressor branch: 9→10→4.
   const branchSegments = [
-    { from: s9, to: s10, method: 'ps', label_from: '9' },
+    { from: s9, to: s10, method: 'ps' },
     { from: s10, to: s4, method: 'ph', label_from: '10' },
   ];
 
@@ -464,7 +464,10 @@ function renderRecompCharts(states, model, fluid) {
     // Fallback: straight lines between state points.
     const mainPath = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     mainPoints = mainPath.map(i => ({ ...states[i], label: String(i + 1) }));
-    branchPoints = [9, 3].map(i => ({ ...states[i], label: i === 9 ? '10' : undefined }));
+    branchPoints = [
+      { ...states[9], label: '10' },
+      { ...states[3] },
+    ];
   }
 
   function toBranches(points, xKey, yKey) {
@@ -542,11 +545,14 @@ function switchCycle(cycle) {
   });
 
   oldView.classList.add('fading-out');
-  oldView.addEventListener('transitionend', () => {
+  function swap() {
     oldView.hidden = true;
     oldView.classList.remove('fading-out');
     newView.hidden = false;
-  }, { once: true });
+  }
+  oldView.addEventListener('transitionend', swap, { once: true });
+  // Fallback if transitionend doesn't fire (e.g., rapid clicks, skipped transition).
+  setTimeout(swap, 350);
 
   // Calculate on first switch if needed.
   if (cycle === 'simple' && simpleNeedsCalc) {

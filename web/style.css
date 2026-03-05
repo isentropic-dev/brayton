@@ -312,8 +312,6 @@ tr:first-child > .sub-header {
     width: 100%;
   }
 
-
-
   .states-scroll {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
