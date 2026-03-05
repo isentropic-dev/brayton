@@ -120,14 +120,18 @@ pub struct RecompDesignPointOutput {
     /// LT recuperator min ΔT (K).
     pub lt_recuperator_min_delta_t_k: f64,
     /// LT recuperator effectiveness (dimensionless).
-    pub lt_recuperator_effectiveness: f64,
+    ///
+    /// `None` if the pinch-point calculation did not converge.
+    pub lt_recuperator_effectiveness: Option<f64>,
 
     /// HT recuperator heat transfer (MW).
     pub ht_recuperator_heat_transfer_mw: f64,
     /// HT recuperator min ΔT (K).
     pub ht_recuperator_min_delta_t_k: f64,
     /// HT recuperator effectiveness (dimensionless).
-    pub ht_recuperator_effectiveness: f64,
+    ///
+    /// `None` if the pinch-point calculation did not converge.
+    pub ht_recuperator_effectiveness: Option<f64>,
 
     /// Thermodynamic states at the 10 cycle points.
     pub states: [StatePoint; 10],
@@ -303,8 +307,7 @@ where
         solution.q_dot_lt,
         config.hx.lt_recuperator.segments,
         thermo,
-    )
-    .unwrap_or(f64::NAN);
+    );
 
     // HT recuperator: top = cold (s4→s5), bottom = hot (s7→s8).
     let ht_effectiveness = effectiveness::compute(
@@ -317,8 +320,7 @@ where
         solution.q_dot_ht,
         config.hx.ht_recuperator.segments,
         thermo,
-    )
-    .unwrap_or(f64::NAN);
+    );
 
     RecompDesignPointOutput {
         mass_flow_total_kg_per_s: solution.m_dot_t.get::<kilogram_per_second>(),
@@ -390,15 +392,19 @@ mod tests {
         );
 
         // Effectiveness must be physical.
+        let lt_eff = out
+            .lt_recuperator_effectiveness
+            .expect("LT effectiveness should converge for baseline");
         assert!(
-            (0.0..=1.0).contains(&out.lt_recuperator_effectiveness),
-            "LT effectiveness {} is outside [0, 1]",
-            out.lt_recuperator_effectiveness,
+            (0.0..=1.0).contains(&lt_eff),
+            "LT effectiveness {lt_eff} is outside [0, 1]",
         );
+        let ht_eff = out
+            .ht_recuperator_effectiveness
+            .expect("HT effectiveness should converge for baseline");
         assert!(
-            (0.0..=1.0).contains(&out.ht_recuperator_effectiveness),
-            "HT effectiveness {} is outside [0, 1]",
-            out.ht_recuperator_effectiveness,
+            (0.0..=1.0).contains(&ht_eff),
+            "HT effectiveness {ht_eff} is outside [0, 1]",
         );
     }
 

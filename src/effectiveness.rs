@@ -81,7 +81,7 @@ where
     Thermo: EffectivenessThermo<Fluid>,
 {
     let q_actual_w = q_actual.get::<watt>();
-    if q_actual_w == 0.0 {
+    if q_actual_w <= 0.0 {
         return Some(0.0);
     }
 
@@ -130,7 +130,10 @@ where
         bisection::solve_from_bracket(&recup, &problem, bracket, &config, observer).ok()?;
 
     let q_max_w = solution.snapshot.output.q_dot.magnitude().get::<watt>();
-    if q_max_w == 0.0 {
+    // Near-zero q_max implies near-zero q_actual (can't transfer more
+    // heat than the pinch-point limit), so the ratio stays bounded.
+    // The clamp below handles any residual numerical overshoot.
+    if q_max_w <= 0.0 {
         return Some(0.0);
     }
 

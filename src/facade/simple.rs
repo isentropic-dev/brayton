@@ -123,7 +123,9 @@ pub struct DesignPointOutput {
     pub recuperator_min_delta_t_k: f64,
 
     /// Recuperator effectiveness (dimensionless, 0 to 1).
-    pub recuperator_effectiveness: f64,
+    ///
+    /// `None` if the pinch-point calculation did not converge.
+    pub recuperator_effectiveness: Option<f64>,
 
     /// Thermodynamic states at the six cycle points.
     ///
@@ -269,8 +271,7 @@ where
         solution.q_dot_recup,
         config.hx.recuperator.segments,
         thermo,
-    )
-    .unwrap_or(f64::NAN);
+    );
 
     DesignPointOutput {
         mass_flow_kg_per_s: solution.m_dot.get::<kilogram_per_second>(),
@@ -334,10 +335,12 @@ mod tests {
         );
 
         // Effectiveness must be physical.
+        let eff = out
+            .recuperator_effectiveness
+            .expect("effectiveness should converge for baseline");
         assert!(
-            (0.0..=1.0).contains(&out.recuperator_effectiveness),
-            "effectiveness {} is outside [0, 1]",
-            out.recuperator_effectiveness,
+            (0.0..=1.0).contains(&eff),
+            "effectiveness {eff} is outside [0, 1]",
         );
     }
 
