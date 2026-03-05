@@ -1,4 +1,3 @@
-use twine_models::models::thermal::hx::discretized::Effectiveness;
 use twine_models::support::thermo::State;
 use uom::si::f64::{MassRate, Power, Ratio, TemperatureInterval};
 
@@ -31,9 +30,6 @@ pub struct Solution<Fluid> {
 
     /// Minimum hot-to-cold temperature difference in the recuperator.
     pub recuperator_min_delta_t: TemperatureInterval,
-
-    /// Recuperator effectiveness (dimensionless, 0 to 1).
-    pub recuperator_effectiveness: Effectiveness,
 }
 
 /// Thermodynamic states around the cycle.

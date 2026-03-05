@@ -285,8 +285,6 @@ where
         eta_thermal,
         lt_min_delta_t: inner.lt_result.min_delta_t.value,
         ht_min_delta_t: outer.ht_result.min_delta_t.value,
-        lt_effectiveness: inner.lt_result.effectiveness,
-        ht_effectiveness: outer.ht_result.effectiveness,
     })
 }
 
