@@ -3,6 +3,7 @@ pub mod recompression;
 pub mod simple;
 
 mod config;
+pub(crate) mod effectiveness;
 mod fluids;
 mod operating_point;
 pub(crate) mod thermo;
