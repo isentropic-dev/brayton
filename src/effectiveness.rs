@@ -113,12 +113,13 @@ where
     )
     .ok()?;
 
-    // When the model fails during iteration, assume positive residual —
-    // the outlet temperature is too high.
+    // When the model fails during iteration, assume negative residual —
+    // the cold outlet temperature is high enough to violate the second
+    // law, meaning we've pushed past the pinch point.
     let observer = |event: &bisection::Event<'_, _, _>| match event {
         bisection::Event::Evaluated { .. } => None,
         bisection::Event::ModelFailed { .. } | bisection::Event::ProblemFailed { .. } => {
-            Some(bisection::Action::assume_positive())
+            Some(bisection::Action::assume_negative())
         }
     };
 

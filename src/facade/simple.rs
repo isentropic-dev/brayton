@@ -488,6 +488,38 @@ mod tests {
         assert!(result.unwrap_err().contains("compressor_efficiency"));
     }
 
+    /// Dashboard defaults: effectiveness must be consistent with min ΔT.
+    ///
+    /// If min ΔT is well above zero, the recuperator isn't at its
+    /// thermodynamic limit and effectiveness must be below 1.0.
+    #[test]
+    fn effectiveness_consistent_with_min_delta_t() {
+        for model in ["PerfectGas", "CoolProp"] {
+            let input = DesignPointInput {
+                model: String::from(model),
+                compressor_inlet_temp_c: 32.0,
+                compressor_inlet_pressure_mpa: 8.0,
+                compressor_outlet_pressure_mpa: 20.0,
+                turbine_inlet_temp_c: 550.0,
+                recuperator_ua_kw_per_k: 1000.0,
+                ..baseline_input()
+            };
+            let out = design_point(&input).unwrap();
+
+            let eff = out
+                .recuperator_effectiveness
+                .expect("effectiveness should converge");
+
+            // If min ΔT is significantly above zero, effectiveness must be below 1.0.
+            assert!(
+                !(out.recuperator_min_delta_t_k > 1.0 && eff >= 1.0),
+                "[{model}] effectiveness {eff} should be < 1.0 \
+                 when min ΔT is {:.1} K",
+                out.recuperator_min_delta_t_k,
+            );
+        }
+    }
+
     #[test]
     fn invalid_pressure_drop_fraction_returns_error() {
         let input = DesignPointInput {
